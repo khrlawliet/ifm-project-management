@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  api:
+    build:
+      context: ./ifm-project-mgmt-api
+      dockerfile: Dockerfile
+    container_name: ifm-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ifm-network
+    restart: unless-stopped
+
+  # Frontend Web Service
+  web:
+    build:
+      context: ./ifm-project-mgmt-web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_TARGET: http://api:8080
+    container_name: ifm-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - ifm-network
+    restart: unless-stopped
+
+networks:
+  ifm-network:
+    driver: bridge

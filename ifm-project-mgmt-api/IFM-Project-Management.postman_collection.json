@@ -1,0 +1,451 @@
+{
+	"info": {
+		"_postman_id": "ifm-project-mgmt-2024",
+		"name": "IFM Project Management API",
+		"description": "Complete API collection for IFM Project Management Tool with CRUD operations for projects and tasks, including filtering, sorting, and pagination features.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Projects",
+			"item": [
+				{
+					"name": "Get All Projects",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects"
+							]
+						},
+						"description": "Retrieve all projects in the system."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Project by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"1"
+							]
+						},
+						"description": "Retrieve a specific project by its ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Project",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"New E-commerce Platform\",\n  \"description\": \"Development of a modern e-commerce platform with microservices architecture\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/projects",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects"
+							]
+						},
+						"description": "Create a new project in the system. Returns 201 Created on success."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Project",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"1"
+							]
+						},
+						"description": "Delete a project and all its tasks. Returns 204 No Content on success."
+					},
+					"response": []
+				}
+			],
+			"description": "Project management endpoints for CRUD operations on projects."
+		},
+		{
+			"name": "Tasks",
+			"item": [
+				{
+					"name": "Create Task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Implement user authentication\",\n  \"priority\": 5,\n  \"dueDate\": \"2025-12-31\",\n  \"assignee\": \"developer@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/1/tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"1",
+								"tasks"
+							]
+						},
+						"description": "Create a new task for a specific project. Returns 201 Created on success.\n\nValidation:\n- name: required, max 255 characters\n- priority: required, 1-5 (1=Low, 5=High)\n- dueDate: required, format yyyy-MM-dd\n- assignee: required, valid email format"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tasks for Project",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/1/tasks?page=0&size=20&sortBy=priority&order=desc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"1",
+								"tasks"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Page number (0-indexed)"
+								},
+								{
+									"key": "size",
+									"value": "20",
+									"description": "Page size (default: 20)"
+								},
+								{
+									"key": "sortBy",
+									"value": "priority",
+									"description": "Field to sort by: priority or dueDate"
+								},
+								{
+									"key": "order",
+									"value": "desc",
+									"description": "Sort order: asc or desc"
+								},
+								{
+									"key": "startDate",
+									"value": "2025-01-01",
+									"description": "Filter by start date (yyyy-MM-dd)",
+									"disabled": true
+								},
+								{
+									"key": "endDate",
+									"value": "2025-12-31",
+									"description": "Filter by end date (yyyy-MM-dd)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Retrieve tasks for a project with optional date range filter, sorting, and pagination.\n\nQuery Parameters:\n- startDate: Filter tasks with due date >= startDate\n- endDate: Filter tasks with due date <= endDate\n- sortBy: priority or dueDate (default: dueDate)\n- order: asc or desc (default: asc)\n- page: Page number (default: 0)\n- size: Page size (default: 20)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tasks with Date Filter",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/projects/1/tasks?startDate=2025-01-01&endDate=2025-12-31&sortBy=dueDate&order=asc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"projects",
+								"1",
+								"tasks"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2025-01-01",
+									"description": "Filter by start date"
+								},
+								{
+									"key": "endDate",
+									"value": "2025-12-31",
+									"description": "Filter by end date"
+								},
+								{
+									"key": "sortBy",
+									"value": "dueDate",
+									"description": "Sort by due date"
+								},
+								{
+									"key": "order",
+									"value": "asc",
+									"description": "Ascending order"
+								}
+							]
+						},
+						"description": "Example: Get tasks within a specific date range, sorted by due date ascending."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Task by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"1"
+							]
+						},
+						"description": "Retrieve a specific task by its ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Task",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Implement OAuth2 authentication\",\n  \"priority\": 4,\n  \"dueDate\": \"2025-12-25\",\n  \"assignee\": \"senior-dev@example.com\",\n  \"status\": \"IN_PROGRESS\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"1"
+							]
+						},
+						"description": "Update task details. Supports partial updates (all fields are optional).\n\nValidation:\n- name: max 255 characters\n- priority: 1-5 (1=Low, 5=High)\n- dueDate: format yyyy-MM-dd\n- assignee: valid email format\n- status: PENDING, IN_PROGRESS, or COMPLETED\n\nNote: Uses optimistic locking to prevent concurrent modification conflicts."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Task (Partial)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"priority\": 5\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"1"
+							]
+						},
+						"description": "Example: Update only the priority field (partial update)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Task Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"COMPLETED\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"1",
+								"status"
+							]
+						},
+						"description": "Update only the status of a task. This endpoint is thread-safe using optimistic locking.\n\nValid status values:\n- PENDING: Task has been created but not yet started\n- IN_PROGRESS: Task is currently being worked on\n- COMPLETED: Task has been completed\n\nNote: Sends async email notification to assignee when status changes."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Status to IN_PROGRESS",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"1",
+								"status"
+							]
+						},
+						"description": "Example: Start working on a task by changing status to IN_PROGRESS."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Task",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tasks/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tasks",
+								"1"
+							]
+						},
+						"description": "Delete a task by its ID. Returns 204 No Content on success."
+					},
+					"response": []
+				}
+			],
+			"description": "Task management endpoints for CRUD operations with filtering, sorting, pagination, and thread-safe status updates."
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}
