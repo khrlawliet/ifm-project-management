@@ -35,15 +35,19 @@ interface TabPanelProps {
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
 
+  // Only render children when tab is active
+  if (value !== index) {
+    return null;
+  }
+
   return (
     <div
       role="tabpanel"
-      hidden={value !== index}
       id={`tabpanel-${index}`}
       aria-labelledby={`tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+      <Box sx={{ py: 3 }}>{children}</Box>
     </div>
   );
 }
@@ -52,7 +56,7 @@ function App() {
   const [activeTab, setActiveTab] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
 

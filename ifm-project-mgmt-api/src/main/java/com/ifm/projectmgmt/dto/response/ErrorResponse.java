@@ -41,11 +41,11 @@ public class ErrorResponse {
      */
     public static ErrorResponse of(int status, String error, String message, String path) {
         return ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(status)
-                .error(error)
-                .message(message)
-                .path(path)
-                .build();
+                            .timestamp(LocalDateTime.now())
+                            .status(status)
+                            .error(error)
+                            .message(message)
+                            .path(path)
+                            .build();
     }
 }

@@ -23,10 +23,10 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "task", indexes = {
-        @Index(name = "idx_project_id", columnList = "project_id"),
-        @Index(name = "idx_due_date", columnList = "due_date"),
-        @Index(name = "idx_priority", columnList = "priority"),
-        @Index(name = "idx_status", columnList = "status")
+        @Index(
+                name = "idx_task_project_status_priority_due",
+                columnList = "project_id, status, priority, due_date"
+        )
 })
 @NoArgsConstructor
 @AllArgsConstructor

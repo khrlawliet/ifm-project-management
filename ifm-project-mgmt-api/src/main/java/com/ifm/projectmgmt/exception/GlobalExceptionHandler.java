@@ -110,10 +110,10 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         String errorMessage = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(FieldError::getDefaultMessage)
-                .collect(Collectors.joining(", "));
+                                .getFieldErrors()
+                                .stream()
+                                .map(FieldError::getDefaultMessage)
+                                .collect(Collectors.joining(", "));
 
         log.error("Validation error: {}", errorMessage);
 
@@ -140,9 +140,9 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         String errorMessage = ex.getConstraintViolations()
-                .stream()
-                .map(ConstraintViolation::getMessage)
-                .collect(Collectors.joining(", "));
+                                .stream()
+                                .map(ConstraintViolation::getMessage)
+                                .collect(Collectors.joining(", "));
 
         log.error("Constraint violation: {}", errorMessage);
 

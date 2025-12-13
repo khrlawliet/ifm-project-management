@@ -17,6 +17,8 @@ import {
   TextField,
   IconButton,
   InputAdornment,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material';
 import { projectApi } from '../../services/api';
@@ -44,6 +46,10 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+
+  // Success notification state
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     loadProjects();
@@ -125,11 +131,14 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
       if (editingProject) {
         // Update existing project
         await projectApi.updateProject(editingProject.id, formData);
+        setSuccessMessage('Project updated successfully!');
       } else {
         // Create new project
         await projectApi.createProject(formData);
+        setSuccessMessage('Project created successfully!');
       }
       handleCloseDialog();
+      setSuccessOpen(true);
       loadProjects();
       if (onProjectChanged) {
         onProjectChanged();
@@ -292,18 +301,41 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} disabled={formLoading}>
+          <Button
+            onClick={handleCloseDialog}
+            disabled={formLoading}
+            color="error"
+            variant="outlined"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             variant="contained"
+            color="primary"
             disabled={formLoading || !formData.name}
           >
             {formLoading ? 'Saving...' : editingProject ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success Notification */}
+      <Snackbar
+        open={successOpen}
+        autoHideDuration={3000}
+        onClose={() => setSuccessOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSuccessOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

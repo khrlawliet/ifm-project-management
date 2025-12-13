@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Service for managing projects.
@@ -42,8 +41,8 @@ public class ProjectService {
         List<Project> projects = projectRepository.findAll();
 
         return projects.stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                       .map(this::mapToResponse)
+                       .toList();
     }
 
     /**
@@ -58,7 +57,7 @@ public class ProjectService {
         log.debug("Fetching project with id: {}", id);
 
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
+                                           .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
 
         return mapToResponse(project);
     }
@@ -97,11 +96,9 @@ public class ProjectService {
     public ProjectResponse updateProject(Long id, UpdateProjectRequest request) {
         log.info("Updating project with id: {}", id);
 
-        // Find the project
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
+                                           .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
 
-        // Update fields if provided
         if (request.getName() != null && !request.getName().isBlank()) {
             project.setName(request.getName());
         }
@@ -110,7 +107,6 @@ public class ProjectService {
             project.setDescription(request.getDescription());
         }
 
-        // Save the updated project
         Project updatedProject = projectRepository.save(project);
 
         log.info("Project updated successfully with id: {}", id);
@@ -129,7 +125,7 @@ public class ProjectService {
         log.info("Deleting project with id: {}", id);
 
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
+                                           .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
 
         projectRepository.delete(project);
 
@@ -146,12 +142,12 @@ public class ProjectService {
         long taskCount = taskRepository.countByProjectId(project.getId());
 
         return ProjectResponse.builder()
-                .id(project.getId())
-                .name(project.getName())
-                .description(project.getDescription())
-                .taskCount(taskCount)
-                .createdAt(project.getCreatedAt())
-                .updatedAt(project.getUpdatedAt())
-                .build();
+                              .id(project.getId())
+                              .name(project.getName())
+                              .description(project.getDescription())
+                              .taskCount(taskCount)
+                              .createdAt(project.getCreatedAt())
+                              .updatedAt(project.getUpdatedAt())
+                              .build();
     }
 }

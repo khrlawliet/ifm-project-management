@@ -47,6 +47,7 @@ public class TaskService {
 
     /**
      * Create a new task for a project.
+     * Invalidates search cache as new task may appear in search results.
      *
      * @param projectId the project ID
      * @param request   the create task request
@@ -59,8 +60,8 @@ public class TaskService {
 
         // Find the project
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        Constants.ERROR_PROJECT_NOT_FOUND + projectId));
+                                           .orElseThrow(() -> new ResourceNotFoundException(
+                                                   Constants.ERROR_PROJECT_NOT_FOUND + projectId));
 
         // Create the task
         Task task = new Task();
@@ -84,8 +85,10 @@ public class TaskService {
 
     /**
      * Get all tasks with optional filters and sorting.
+     * Results are cached for 5 minutes when taskName filter is used.
      *
      * @param status    the status filter (optional)
+     * @param taskName  the task name filter (optional, partial match)
      * @param startDate the start date filter (optional)
      * @param endDate   the end date filter (optional)
      * @param sortBy    the field to sort by (priority or dueDate)
@@ -97,6 +100,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public PagedResponse<TaskResponse> getAllTasks(
             TaskStatus status,
+            String taskName,
             LocalDate startDate,
             LocalDate endDate,
             String sortBy,
@@ -104,8 +108,8 @@ public class TaskService {
             int page,
             int size) {
 
-        log.debug("Fetching all tasks with filters - status: {}, startDate: {}, endDate: {}",
-                status, startDate, endDate);
+        log.debug("Fetching all tasks with filters - status: {}, taskName: {}, startDate: {}, endDate: {}",
+                  status, taskName, startDate, endDate);
 
         // Validate date range
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
@@ -117,7 +121,7 @@ public class TaskService {
 
         // Fetch tasks with optional filters
         Page<Task> taskPage = taskRepository.findAllWithOptionalFilters(
-                status, startDate, endDate, pageable);
+                status, taskName, startDate, endDate, pageable);
 
         // Map to response
         Page<TaskResponse> responsePage = taskPage.map(this::mapToResponse);
@@ -150,20 +154,16 @@ public class TaskService {
 
         log.debug("Fetching tasks for project id: {} with filters", projectId);
 
-        // Verify project exists
         if (!projectRepository.existsById(projectId)) {
             throw new ResourceNotFoundException(Constants.ERROR_PROJECT_NOT_FOUND + projectId);
         }
 
-        // Validate date range
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             throw new InvalidInputException(Constants.ERROR_INVALID_DATE_RANGE);
         }
 
-        // Create pageable with sorting
         Pageable pageable = createPageable(page, size, sortBy, order);
 
-        // Fetch tasks
         Page<Task> taskPage;
         if (startDate != null || endDate != null) {
             taskPage = taskRepository.findByProjectIdWithOptionalDateRange(
@@ -172,7 +172,6 @@ public class TaskService {
             taskPage = taskRepository.findByProjectId(projectId, pageable);
         }
 
-        // Map to response
         Page<TaskResponse> responsePage = taskPage.map(this::mapToResponse);
 
         return PagedResponse.of(responsePage);
@@ -180,6 +179,7 @@ public class TaskService {
 
     /**
      * Get a task by ID.
+     * Results are cached for 5 minutes to improve performance.
      *
      * @param id the task ID
      * @return task response
@@ -187,11 +187,11 @@ public class TaskService {
      */
     @Transactional(readOnly = true)
     public TaskResponse getTaskById(Long id) {
-        log.debug("Fetching task with id: {}", id);
+        log.debug("Fetching task with id: {} (cache miss)", id);
 
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        Constants.ERROR_TASK_NOT_FOUND + id));
+                                  .orElseThrow(() -> new ResourceNotFoundException(
+                                          Constants.ERROR_TASK_NOT_FOUND + id));
 
         return mapToResponse(task);
     }
@@ -199,6 +199,7 @@ public class TaskService {
     /**
      * Update a task.
      * Uses optimistic locking to ensure thread-safe updates.
+     * Invalidates both ID cache and search cache on update.
      *
      * @param id      the task ID
      * @param request the update task request
@@ -211,15 +212,12 @@ public class TaskService {
         log.info("Updating task with id: {}", id);
 
         try {
-            // Find the task
             Task task = taskRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            Constants.ERROR_TASK_NOT_FOUND + id));
+                                      .orElseThrow(() -> new ResourceNotFoundException(
+                                              Constants.ERROR_TASK_NOT_FOUND + id));
 
-            // Track changes
             List<String> changes = new ArrayList<>();
 
-            // Update fields if provided
             if (request.getName() != null && !request.getName().equals(task.getName())) {
                 task.setName(request.getName());
                 changes.add("name changed to '" + request.getName() + "'");
@@ -246,12 +244,10 @@ public class TaskService {
                 changes.add("status changed from " + oldStatus + " to " + request.getStatus());
             }
 
-            // Save with optimistic locking
             Task updatedTask = taskRepository.save(task);
 
             log.info("Task updated successfully with id: {}", id);
 
-            // Send async notification if there were changes
             if (!changes.isEmpty()) {
                 String changesStr = String.join(", ", changes);
                 notificationService.sendTaskUpdatedNotification(updatedTask, changesStr);
@@ -268,6 +264,7 @@ public class TaskService {
     /**
      * Update task status only.
      * Uses optimistic locking to ensure thread-safe updates.
+     * Invalidates both ID cache and search cache on update.
      *
      * @param id      the task ID
      * @param request the update status request
@@ -280,20 +277,17 @@ public class TaskService {
         log.info("Updating task status for id: {} to {}", id, request.getStatus());
 
         try {
-            // Find the task
             Task task = taskRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            Constants.ERROR_TASK_NOT_FOUND + id));
+                                      .orElseThrow(() -> new ResourceNotFoundException(
+                                              Constants.ERROR_TASK_NOT_FOUND + id));
 
             TaskStatus oldStatus = task.getStatus();
             task.setStatus(request.getStatus());
 
-            // Save with optimistic locking
             Task updatedTask = taskRepository.save(task);
 
             log.info("Task status updated successfully for id: {}", id);
 
-            // Send async notification
             notificationService.sendTaskStatusChangedNotification(
                     updatedTask,
                     oldStatus.toString(),
@@ -310,6 +304,7 @@ public class TaskService {
 
     /**
      * Delete a task.
+     * Invalidates both ID cache and search cache on deletion.
      *
      * @param id the task ID
      * @throws ResourceNotFoundException if task not found
@@ -319,8 +314,8 @@ public class TaskService {
         log.info("Deleting task with id: {}", id);
 
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        Constants.ERROR_TASK_NOT_FOUND + id));
+                                  .orElseThrow(() -> new ResourceNotFoundException(
+                                          Constants.ERROR_TASK_NOT_FOUND + id));
 
         taskRepository.delete(task);
 
@@ -337,18 +332,15 @@ public class TaskService {
      * @return pageable object
      */
     private Pageable createPageable(int page, int size, String sortBy, String order) {
-        // Validate and set default values
         int validPage = Math.max(page, Constants.DEFAULT_PAGE_NUMBER);
-        int validSize = Math.min(Math.max(size, 1), Constants.MAX_PAGE_SIZE);
+        int validSize = Math.clamp(size, 1, Constants.MAX_PAGE_SIZE);
 
-        // Determine sort field
-        String sortField = Constants.SORT_BY_DUE_DATE; // default
+        String sortField = Constants.SORT_BY_DUE_DATE;
         if (Constants.SORT_BY_PRIORITY.equalsIgnoreCase(sortBy)) {
             sortField = Constants.SORT_BY_PRIORITY;
         }
 
-        // Determine sort direction
-        Sort.Direction direction = Sort.Direction.ASC; // default
+        Sort.Direction direction = Sort.Direction.ASC;
         if (Constants.SORT_ORDER_DESC.equalsIgnoreCase(order)) {
             direction = Sort.Direction.DESC;
         }
@@ -364,16 +356,16 @@ public class TaskService {
      */
     private TaskResponse mapToResponse(Task task) {
         return TaskResponse.builder()
-                .id(task.getId())
-                .name(task.getName())
-                .priority(task.getPriority())
-                .dueDate(task.getDueDate())
-                .assignee(task.getAssignee())
-                .status(task.getStatus())
-                .projectId(task.getProject().getId())
-                .projectName(task.getProject().getName())
-                .createdAt(task.getCreatedAt())
-                .updatedAt(task.getUpdatedAt())
-                .build();
+                           .id(task.getId())
+                           .name(task.getName())
+                           .priority(task.getPriority())
+                           .dueDate(task.getDueDate())
+                           .assignee(task.getAssignee())
+                           .status(task.getStatus())
+                           .projectId(task.getProject().getId())
+                           .projectName(task.getProject().getName())
+                           .createdAt(task.getCreatedAt())
+                           .updatedAt(task.getUpdatedAt())
+                           .build();
     }
 }

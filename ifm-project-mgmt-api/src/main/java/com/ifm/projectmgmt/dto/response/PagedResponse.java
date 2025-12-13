@@ -43,14 +43,14 @@ public class PagedResponse<T> {
      */
     public static <T> PagedResponse<T> of(org.springframework.data.domain.Page<T> page) {
         return PagedResponse.<T>builder()
-                .content(page.getContent())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .currentPage(page.getNumber())
-                .pageSize(page.getSize())
-                .first(page.isFirst())
-                .last(page.isLast())
-                .empty(page.isEmpty())
-                .build();
+                            .content(page.getContent())
+                            .totalElements(page.getTotalElements())
+                            .totalPages(page.getTotalPages())
+                            .currentPage(page.getNumber())
+                            .pageSize(page.getSize())
+                            .first(page.isFirst())
+                            .last(page.isLast())
+                            .empty(page.isEmpty())
+                            .build();
     }
 }

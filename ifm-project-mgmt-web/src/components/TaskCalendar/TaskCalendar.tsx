@@ -16,7 +16,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   Card,
   CardContent,
   Dialog,
@@ -25,7 +24,12 @@ import {
   DialogActions,
   Button,
   Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickersDay } from '@mui/x-date-pickers/PickersDay';
 import type { PickersDayProps } from '@mui/x-date-pickers/PickersDay';
@@ -61,7 +65,6 @@ import {
   DATE_FILTER,
   FILTER_LABELS,
   COLORS,
-  TASK_PRIORITY,
 } from '../../constants/taskConstants';
 
 // Custom Hook
@@ -109,6 +112,9 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Sort state
+  const [sortBy, setSortBy] = useState<'priority' | 'dueDate'>(SORT_BY.DUE_DATE);
+
   // ============================================
   // Effects
   // ============================================
@@ -121,11 +127,11 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
   }, []);
 
   /**
-   * Load tasks when filters or date change
+   * Load tasks when filters, date, or sort change
    */
   useEffect(() => {
     loadTasksForMonth();
-  }, [selectedDate, selectedProject, dateFilter, priorityFilter, statusFilter, refresh]);
+  }, [selectedDate, selectedProject, dateFilter, priorityFilter, statusFilter, sortBy, refresh]);
 
   // ============================================
   // Data Loading Functions
@@ -191,7 +197,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
         response = await taskApi.getTasks(Number(selectedProject), {
           startDate,
           endDate,
-          sortBy: SORT_BY.DUE_DATE,
+          sortBy: sortBy,
           size: PAGINATION.CALENDAR_PAGE_SIZE,
         });
       } else {
@@ -199,7 +205,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
         response = await taskApi.getAllTasks({
           startDate,
           endDate,
-          sortBy: SORT_BY.DUE_DATE,
+          sortBy: sortBy,
           size: PAGINATION.CALENDAR_PAGE_SIZE,
         });
       }
@@ -273,7 +279,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
    * Custom day component for the calendar
    * Shows colored background and multiple small badges for each priority level
    */
-  const ServerDay = (props: PickersDayProps<Dayjs>) => {
+  const ServerDay = (props: PickersDayProps) => {
     const { day, outsideCurrentMonth, ...other } = props;
     const backgroundColor = getDateBackgroundColor(day);
     const taskCountsByPriority = getTaskCountsByPriority(tasks, day);
@@ -334,7 +340,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
                   sx={{
                     position: 'absolute',
                     ...position,
-                    backgroundColor: COLORS.PRIORITY_BADGE[Number(priority)],
+                    backgroundColor: COLORS.PRIORITY_BADGE[Number(priority) as keyof typeof COLORS.PRIORITY_BADGE],
                     color: '#fff',
                     borderRadius: '50%',
                     width: '10px',
@@ -376,6 +382,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
 
       {/* Filters */}
       <Box mb={3}>
+        {/* First Row: Project, Priority, Status */}
         <TaskFilters
           selectedProject={selectedProject}
           projects={projects}
@@ -384,12 +391,56 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
           onPriorityChange={handlePriorityFilterChange}
           selectedStatus={statusFilter}
           onStatusChange={handleStatusFilterChange}
-          dateFilter={dateFilter}
-          onDateFilterChange={handleDateFilterChange}
           showDateRangePicker={false}
-          showDateRangeSelector={true}
+          showDateRangeSelector={false}
           showStatusFilter={true}
         />
+
+        {/* Second Row: Date Range and Sort By */}
+        <Grid container spacing={2} mt={1}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
+              <Typography variant="subtitle2" fontWeight="medium" mb={2}>
+                Due Date
+              </Typography>
+              <FormControl fullWidth size="small">
+                <InputLabel shrink>Date Range</InputLabel>
+                <Select
+                  value={dateFilter}
+                  onChange={handleDateFilterChange}
+                  label="Date Range"
+                  displayEmpty
+                  notched
+                >
+                  <MenuItem value={DATE_FILTER.ALL}>{FILTER_LABELS.CURRENT_MONTH}</MenuItem>
+                  <MenuItem value={DATE_FILTER.THIS_WEEK}>{FILTER_LABELS.THIS_WEEK}</MenuItem>
+                  <MenuItem value={DATE_FILTER.NEXT_WEEK}>{FILTER_LABELS.NEXT_WEEK}</MenuItem>
+                  <MenuItem value={DATE_FILTER.NEXT_MONTH}>{FILTER_LABELS.NEXT_MONTH}</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              Which date range to display
+            </Typography>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Sort By</InputLabel>
+              <Select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                label="Sort By"
+              >
+                <MenuItem value={SORT_BY.DUE_DATE}>Due Date</MenuItem>
+                <MenuItem value={SORT_BY.PRIORITY}>Priority</MenuItem>
+              </Select>
+            </FormControl>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              Sort tasks by due date or priority
+            </Typography>
+          </Grid>
+        </Grid>
 
         {/* Active Filters Summary */}
         <Box mt={2} sx={{ p: 1.5, bgcolor: COLORS.UI.ACTIVE_FILTER_BG, borderRadius: 1, border: '1px solid', borderColor: COLORS.UI.ACTIVE_FILTER_BORDER }}>
@@ -425,9 +476,16 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
         </Box>
       </Box>
 
+      {/* Info Note */}
+      <Box mb={2} sx={{ p: 1.5, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #90caf9' }}>
+        <Typography variant="body2" color="text.secondary">
+          Click a date to view assigned tasks
+        </Typography>
+      </Box>
+
       <Grid container spacing={3}>
         {/* Calendar */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DateCalendar
               value={selectedDate}
@@ -534,7 +592,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
         </Grid>
 
         {/* Tasks for selected date */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="h6" gutterBottom>
             Tasks on {selectedDate.format('MMMM DD, YYYY')}
           </Typography>

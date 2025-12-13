@@ -145,6 +145,3 @@ dist-ssr
 *.md
 !README.md
 !DOCKER.md
-
-# Keep Makefile
-!Makefile

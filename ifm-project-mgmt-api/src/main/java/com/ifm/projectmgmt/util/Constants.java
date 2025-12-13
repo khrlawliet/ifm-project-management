@@ -6,7 +6,6 @@ package com.ifm.projectmgmt.util;
 public final class Constants {
 
     private Constants() {
-        // Prevent instantiation
     }
 
     // API Base Paths
@@ -29,20 +28,13 @@ public final class Constants {
     public static final String SORT_ORDER_ASC = "asc";
     public static final String SORT_ORDER_DESC = "desc";
 
-    // Task Priority
-    public static final int MIN_PRIORITY = 1;
-    public static final int MAX_PRIORITY = 5;
-
     // Error Messages
     public static final String ERROR_PROJECT_NOT_FOUND = "Project not found with id: ";
     public static final String ERROR_TASK_NOT_FOUND = "Task not found with id: ";
-    public static final String ERROR_INVALID_PRIORITY = "Priority must be between 1 and 5";
     public static final String ERROR_INVALID_DATE_RANGE = "Start date must be before end date";
     public static final String ERROR_CONCURRENT_MODIFICATION = "Task was modified by another process. Please retry.";
 
-    // Success Messages
-    public static final String SUCCESS_TASK_CREATED = "Task created successfully";
-    public static final String SUCCESS_TASK_UPDATED = "Task updated successfully";
-    public static final String SUCCESS_TASK_DELETED = "Task deleted successfully";
-    public static final String SUCCESS_PROJECT_CREATED = "Project created successfully";
+    // Cache Names
+    public static final String CACHE_TASK_BY_ID = "taskById";
+    public static final String CACHE_TASK_SEARCH = "taskSearch";
 }

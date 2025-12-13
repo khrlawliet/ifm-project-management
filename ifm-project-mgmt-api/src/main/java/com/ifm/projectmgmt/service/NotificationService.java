@@ -32,32 +32,32 @@ public class NotificationService {
         String threadName = Thread.currentThread().getName();
 
         log.info("""
-                ========================================
-                EMAIL NOTIFICATION - TASK CREATED
-                ========================================
-                Thread: {}
-                To: {}
-                Subject: New Task Assigned - {}
-                ----------------------------------------
-                You have been assigned a new task:
-
-                  Task Name    : {}
-                  Priority     : {} (1=Low, 5=High)
-                  Due Date     : {}
-                  Status       : {}
-                  Project      : {}
-
-                Please log in to the system to view more details.
-                ========================================
-                """,
-                threadName,
-                task.getAssignee(),
-                task.getName(),
-                task.getName(),
-                task.getPriority(),
-                task.getDueDate(),
-                task.getStatus(),
-                task.getProject().getName()
+                         ========================================
+                         EMAIL NOTIFICATION - TASK CREATED
+                         ========================================
+                         Thread: {}
+                         To: {}
+                         Subject: New Task Assigned - {}
+                         ----------------------------------------
+                         You have been assigned a new task:
+                         
+                           Task Name    : {}
+                           Priority     : {} (1=Low, 5=High)
+                           Due Date     : {}
+                           Status       : {}
+                           Project      : {}
+                         
+                         Please log in to the system to view more details.
+                         ========================================
+                         """,
+                 threadName,
+                 task.getAssignee(),
+                 task.getName(),
+                 task.getName(),
+                 task.getPriority(),
+                 task.getDueDate(),
+                 task.getStatus(),
+                 task.getProject().getName()
         );
 
         return CompletableFuture.completedFuture(null);
@@ -76,34 +76,34 @@ public class NotificationService {
         String threadName = Thread.currentThread().getName();
 
         log.info("""
-                ========================================
-                EMAIL NOTIFICATION - TASK UPDATED
-                ========================================
-                Thread: {}
-                To: {}
-                Subject: Task Updated - {}
-                ----------------------------------------
-                Your task has been updated:
-
-                  Task Name    : {}
-                  Changes      : {}
-                  Current Status: {}
-                  Priority     : {}
-                  Due Date     : {}
-                  Project      : {}
-
-                Please log in to the system to view more details.
-                ========================================
-                """,
-                threadName,
-                task.getAssignee(),
-                task.getName(),
-                task.getName(),
-                changes,
-                task.getStatus(),
-                task.getPriority(),
-                task.getDueDate(),
-                task.getProject().getName()
+                         ========================================
+                         EMAIL NOTIFICATION - TASK UPDATED
+                         ========================================
+                         Thread: {}
+                         To: {}
+                         Subject: Task Updated - {}
+                         ----------------------------------------
+                         Your task has been updated:
+                         
+                           Task Name    : {}
+                           Changes      : {}
+                           Current Status: {}
+                           Priority     : {}
+                           Due Date     : {}
+                           Project      : {}
+                         
+                         Please log in to the system to view more details.
+                         ========================================
+                         """,
+                 threadName,
+                 task.getAssignee(),
+                 task.getName(),
+                 task.getName(),
+                 changes,
+                 task.getStatus(),
+                 task.getPriority(),
+                 task.getDueDate(),
+                 task.getProject().getName()
         );
 
         return CompletableFuture.completedFuture(null);
@@ -123,34 +123,34 @@ public class NotificationService {
         String threadName = Thread.currentThread().getName();
 
         log.info("""
-                ========================================
-                EMAIL NOTIFICATION - STATUS CHANGED
-                ========================================
-                Thread: {}
-                To: {}
-                Subject: Task Status Changed - {}
-                ----------------------------------------
-                The status of your task has been changed:
-
-                  Task Name    : {}
-                  Old Status   : {}
-                  New Status   : {}
-                  Priority     : {}
-                  Due Date     : {}
-                  Project      : {}
-
-                Please log in to the system to view more details.
-                ========================================
-                """,
-                threadName,
-                task.getAssignee(),
-                task.getName(),
-                task.getName(),
-                oldStatus,
-                newStatus,
-                task.getPriority(),
-                task.getDueDate(),
-                task.getProject().getName()
+                         ========================================
+                         EMAIL NOTIFICATION - STATUS CHANGED
+                         ========================================
+                         Thread: {}
+                         To: {}
+                         Subject: Task Status Changed - {}
+                         ----------------------------------------
+                         The status of your task has been changed:
+                         
+                           Task Name    : {}
+                           Old Status   : {}
+                           New Status   : {}
+                           Priority     : {}
+                           Due Date     : {}
+                           Project      : {}
+                         
+                         Please log in to the system to view more details.
+                         ========================================
+                         """,
+                 threadName,
+                 task.getAssignee(),
+                 task.getName(),
+                 task.getName(),
+                 oldStatus,
+                 newStatus,
+                 task.getPriority(),
+                 task.getDueDate(),
+                 task.getProject().getName()
         );
 
         return CompletableFuture.completedFuture(null);

@@ -120,9 +120,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     );
 
     /**
-     * Find all tasks with optional status and date range filters.
+     * Find all tasks with optional status, date range, and name filters.
      *
      * @param status    the task status, can be null
+     * @param taskName  the task name filter (partial match), can be null
      * @param startDate the start date (inclusive), can be null
      * @param endDate   the end date (inclusive), can be null
      * @param pageable  pagination and sorting information
@@ -130,10 +131,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT t FROM Task t WHERE " +
            "(:status IS NULL OR t.status = :status) " +
+           "AND (:taskName IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :taskName, '%'))) " +
            "AND (:startDate IS NULL OR t.dueDate >= :startDate) " +
            "AND (:endDate IS NULL OR t.dueDate <= :endDate)")
     Page<Task> findAllWithOptionalFilters(
             @Param("status") TaskStatus status,
+            @Param("taskName") String taskName,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             Pageable pageable

@@ -34,8 +34,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid,
+  Autocomplete,
+  Snackbar,
+  Alert,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
+import { Grid } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -44,8 +49,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 
 // API and Types
-import { taskApi, projectApi } from '../../services/api';
-import type { Task, TaskFilters, Project, CreateTaskRequest } from '../../types';
+import { taskApi, projectApi, userApi } from '../../services/api';
+import type { Task, Project, User, CreateTaskRequest, TaskFilters as TaskFiltersType } from '../../types';
 
 // Reusable Components
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -63,7 +68,6 @@ import {
 import {
   PAGINATION,
   SORT_BY,
-  TASK_PRIORITY,
   PRIORITY_LABELS,
   TASK_STATUS,
 } from '../../constants/taskConstants';
@@ -95,8 +99,8 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
   const [error, setError] = useState<string | null>(null);
 
   // Pagination state
-  const [page, setPage] = useState(PAGINATION.DEFAULT_PAGE);
-  const [rowsPerPage, setRowsPerPage] = useState(PAGINATION.DEFAULT_ROWS_PER_PAGE);
+  const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(PAGINATION.DEFAULT_ROWS_PER_PAGE);
   const [totalElements, setTotalElements] = useState(0);
 
   // Filter state (using custom hook)
@@ -113,8 +117,16 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
     handleEndDateChange,
   } = useTaskFilters();
 
+  // Sort state
+  const [sortBy, setSortBy] = useState<'priority' | 'dueDate'>(SORT_BY.DUE_DATE);
+
+  // Search state
+  const [taskNameSearch, setTaskNameSearch] = useState<string>('');
+  const [activeSearchTerm, setActiveSearchTerm] = useState<string>(''); // The active search being applied
+  const [advancedSearch, setAdvancedSearch] = useState<boolean>(false);
+
   // API filter state (for backend calls)
-  const [apiFilters, setApiFilters] = useState<TaskFilters>({
+  const [apiFilters, setApiFilters] = useState<TaskFiltersType>({
     sortBy: SORT_BY.DUE_DATE,
   });
 
@@ -123,14 +135,20 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState<CreateTaskRequest>({
     name: '',
-    priority: TASK_PRIORITY.HIGHEST,
+    priority: 0,
     dueDate: '',
     assignee: '',
     projectId: 0,
   });
-  const [formDueDate, setFormDueDate] = useState<Dayjs | null>(dayjs().add(1, 'day'));
+  const [formDueDate, setFormDueDate] = useState<Dayjs | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Success notification state
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // ============================================
   // Effects
@@ -144,24 +162,32 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
   }, []);
 
   /**
-   * Update API filters when project or dates change
+   * Load users on component mount
+   */
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  /**
+   * Update API filters when project, dates, or sort changes
+   * Note: taskName is NOT sent to API - it's filtered client-side
    */
   useEffect(() => {
     setApiFilters({
-      sortBy: SORT_BY.DUE_DATE,
+      sortBy: sortBy,
       projectId: selectedProject ? Number(selectedProject) : undefined,
       startDate: startDate ? startDate.format('YYYY-MM-DD') : undefined,
       endDate: endDate ? endDate.format('YYYY-MM-DD') : undefined,
     });
     setPage(PAGINATION.DEFAULT_PAGE); // Reset to first page on filter change
-  }, [selectedProject, startDate, endDate]);
+  }, [selectedProject, startDate, endDate, sortBy]);
 
   /**
-   * Load tasks when filters or pagination change
+   * Load tasks when filters, pagination, or active search term change
    */
   useEffect(() => {
     loadTasks();
-  }, [page, rowsPerPage, apiFilters, priorityFilter, statusFilter]);
+  }, [page, rowsPerPage, apiFilters, priorityFilter, statusFilter, activeSearchTerm]);
 
   // ============================================
   // Data Loading Functions
@@ -174,13 +200,22 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
     try {
       const data = await projectApi.getProjects();
       setProjects(data);
-
-      // Set first project as default for form
-      if (data.length > 0) {
-        setFormData((prev) => ({ ...prev, projectId: data[0].id }));
-      }
     } catch (err) {
       console.error('Failed to load projects', err);
+    }
+  };
+
+  /**
+   * Load users from API
+   */
+  const loadUsers = async () => {
+    try {
+      console.log('Fetching users from API...');
+      const data = await userApi.getUsers();
+      console.log('Users loaded:', data);
+      setUsers(data);
+    } catch (err) {
+      console.error('Failed to load users', err);
     }
   };
 
@@ -216,13 +251,34 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
       let filteredTasks = filterTasksByPriority(response.content, priorityFilter);
       filteredTasks = filterTasksByStatus(filteredTasks, statusFilter);
 
+      // Apply task name search filter (client-side)
+      if (activeSearchTerm.trim()) {
+        const searchLower = activeSearchTerm.toLowerCase();
+        filteredTasks = filteredTasks.filter(task =>
+          task.name.toLowerCase().includes(searchLower)
+        );
+      }
+
       setTasks(filteredTasks);
-      setTotalElements((priorityFilter || statusFilter) ? filteredTasks.length : response.totalElements);
+      setTotalElements((priorityFilter || statusFilter || activeSearchTerm) ? filteredTasks.length : response.totalElements);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load tasks');
     } finally {
       setLoading(false);
     }
+  };
+
+  // ============================================
+  // Event Handlers - Search
+  // ============================================
+
+  /**
+   * Handle search button click
+   * Applies the search term and resets to first page
+   */
+  const handleSearch = () => {
+    setActiveSearchTerm(taskNameSearch);
+    setPage(PAGINATION.DEFAULT_PAGE);
   };
 
   // ============================================
@@ -232,7 +288,7 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
   /**
    * Handle page change in pagination
    */
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -253,15 +309,15 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
    */
   const handleOpenCreateDialog = () => {
     setEditingTask(null);
-    const defaultDueDate = dayjs().add(1, 'day');
     setFormData({
       name: '',
-      priority: TASK_PRIORITY.HIGHEST,
-      dueDate: defaultDueDate.format('YYYY-MM-DD'),
+      priority: 0,
+      dueDate: '',
       assignee: '',
-      projectId: projects.length > 0 ? projects[0].id : 0,
+      projectId: 0,
     });
-    setFormDueDate(defaultDueDate);
+    setFormDueDate(null);
+    setSelectedUser(null);
     setFormError(null);
     setDialogOpen(true);
   };
@@ -280,6 +336,9 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
       status: task.status,
     });
     setFormDueDate(dayjs(task.dueDate));
+    // Find and set the selected user
+    const user = users.find(u => u.email === task.assignee);
+    setSelectedUser(user || null);
     setFormError(null);
     setDialogOpen(true);
   };
@@ -330,12 +389,15 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
       if (editingTask) {
         // Update existing task
         await taskApi.updateTask(editingTask.id!, formData);
+        setSuccessMessage('Task updated successfully!');
       } else {
         // Create new task
         await taskApi.createTask(formData);
+        setSuccessMessage('Task created successfully!');
       }
 
       handleCloseDialog();
+      setSuccessOpen(true);
       loadTasks();
 
       // Notify parent component
@@ -398,25 +460,121 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
           </Button>
         </Box>
 
-        {/* Filters */}
+        {/* Search Section */}
         <Box mb={3}>
-          <TaskFilters
-            selectedProject={selectedProject}
-            projects={projects}
-            onProjectChange={handleProjectChange}
-            selectedPriority={priorityFilter}
-            onPriorityChange={handlePriorityFilterChange}
-            selectedStatus={statusFilter}
-            onStatusChange={handleStatusFilterChange}
-            startDate={startDate}
-            endDate={endDate}
-            onStartDateChange={handleStartDateChange}
-            onEndDateChange={handleEndDateChange}
-            showDateRangePicker={true}
-            showDateRangeSelector={false}
-            showStatusFilter={true}
-          />
+          <Box display="flex" alignItems="center" gap={2} mb={2}>
+            <TextField
+              fullWidth
+              label="Search Task Name"
+              placeholder="Enter task name to search..."
+              value={taskNameSearch}
+              onChange={(e) => setTaskNameSearch(e.target.value)}
+              onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+              variant="outlined"
+              size="medium"
+              sx={{ flexGrow: 1 }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSearch}
+              sx={{ height: '56px', minWidth: '100px' }}
+            >
+              Search
+            </Button>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={advancedSearch}
+                  onChange={(e) => setAdvancedSearch(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Advanced Search"
+              sx={{ whiteSpace: 'nowrap' }}
+            />
+          </Box>
         </Box>
+
+        {/* Filters - Only show if Advanced Search is enabled */}
+        {advancedSearch && (
+          <Box mb={3}>
+            {/* First Row: Project, Priority, Status */}
+            <TaskFilters
+              selectedProject={selectedProject}
+              projects={projects}
+              onProjectChange={handleProjectChange}
+              selectedPriority={priorityFilter}
+              onPriorityChange={handlePriorityFilterChange}
+              selectedStatus={statusFilter}
+              onStatusChange={handleStatusFilterChange}
+              showDateRangePicker={false}
+              showDateRangeSelector={false}
+              showStatusFilter={true}
+            />
+
+          {/* Second Row: Due Date and Sort By */}
+          <Grid container spacing={2} mt={1}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
+                <Typography variant="subtitle2" fontWeight="medium" mb={2}>
+                  Due Date
+                </Typography>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <Box display="flex" gap={1}>
+                    <DatePicker
+                      label="Start Date"
+                      value={startDate}
+                      onChange={handleStartDateChange}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          size: 'small',
+                        },
+                      }}
+                    />
+                    <DatePicker
+                      label="End Date"
+                      value={endDate}
+                      onChange={handleEndDateChange}
+                      slotProps={{
+                        textField: {
+                          fullWidth: true,
+                          size: 'small',
+                        },
+                      }}
+                    />
+                  </Box>
+                </LocalizationProvider>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                Filter tasks by due date range
+              </Typography>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Sort By</InputLabel>
+                <Select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  label="Sort By"
+                >
+                  <MenuItem value={SORT_BY.DUE_DATE}>Due Date</MenuItem>
+                  <MenuItem value={SORT_BY.PRIORITY}>Priority</MenuItem>
+                </Select>
+              </FormControl>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                Sort tasks by due date or priority
+              </Typography>
+            </Grid>
+          </Grid>
+          </Box>
+        )}
 
         {/* Error Message */}
         {error && <ErrorMessage message={error} onRetry={loadTasks} />}
@@ -520,7 +678,7 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
           <Box component="form" noValidate sx={{ mt: 2 }}>
             <Grid container spacing={2}>
               {/* Task Name */}
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   required
@@ -533,29 +691,58 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
               </Grid>
 
               {/* Assignee */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Assignee"
-                  name="assignee"
-                  value={formData.assignee}
-                  onChange={handleFormChange}
+              <Grid size={{ xs: 12 }}>
+                <Autocomplete
+                  options={users}
+                  getOptionLabel={(option) =>
+                    `${option.fullName || option.username} (${option.email})`
+                  }
+                  value={selectedUser}
+                  onChange={(_event, newValue) => {
+                    setSelectedUser(newValue);
+                    if (newValue) {
+                      setFormData((prev) => ({ ...prev, assignee: newValue.email }));
+                    } else {
+                      setFormData((prev) => ({ ...prev, assignee: '' }));
+                    }
+                  }}
                   disabled={formLoading}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Assignee"
+                      required
+                      placeholder="Search by username or email"
+                    />
+                  )}
+                  filterOptions={(options, { inputValue }) => {
+                    const searchTerm = inputValue.toLowerCase();
+                    return options.filter(
+                      (option) =>
+                        option.username.toLowerCase().includes(searchTerm) ||
+                        option.email.toLowerCase().includes(searchTerm) ||
+                        (option.fullName?.toLowerCase() || '').includes(searchTerm)
+                    );
+                  }}
                 />
               </Grid>
 
               {/* Project */}
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth required>
-                  <InputLabel>Project</InputLabel>
+                  <InputLabel shrink>Project</InputLabel>
                   <Select
                     name="projectId"
-                    value={formData.projectId.toString()}
+                    value={formData.projectId === 0 ? '' : formData.projectId.toString()}
                     onChange={handleFormChange}
                     label="Project"
                     disabled={formLoading}
+                    displayEmpty
+                    notched
                   >
+                    <MenuItem value="" disabled>
+                      Select Project
+                    </MenuItem>
                     {projects.map((project) => (
                       <MenuItem key={project.id} value={project.id}>
                         {project.name}
@@ -566,16 +753,21 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
               </Grid>
 
               {/* Priority */}
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <FormControl fullWidth required>
-                  <InputLabel>Priority</InputLabel>
+                  <InputLabel shrink>Priority</InputLabel>
                   <Select
                     name="priority"
-                    value={formData.priority.toString()}
+                    value={formData.priority === 0 ? '' : formData.priority.toString()}
                     onChange={handleFormChange}
                     label="Priority"
                     disabled={formLoading}
+                    displayEmpty
+                    notched
                   >
+                    <MenuItem value="" disabled>
+                      Select Priority
+                    </MenuItem>
                     {Object.entries(PRIORITY_LABELS).map(([priority, label]) => (
                       <MenuItem key={priority} value={priority}>
                         {label}
@@ -587,7 +779,7 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
 
               {/* Status */}
               {editingTask && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <FormControl fullWidth required>
                     <InputLabel>Status</InputLabel>
                     <Select
@@ -606,7 +798,7 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
               )}
 
               {/* Due Date */}
-              <Grid item xs={12} sm={editingTask ? 6 : 12}>
+              <Grid size={{ xs: 12, sm: editingTask ? 6 : 12 }}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
                     label="Due Date"
@@ -617,6 +809,7 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
                       textField: {
                         fullWidth: true,
                         required: true,
+                        placeholder: 'Select Due Date',
                       },
                     }}
                   />
@@ -626,18 +819,41 @@ const TaskList = ({ onTaskChanged }: TaskListProps) => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} disabled={formLoading}>
+          <Button
+            onClick={handleCloseDialog}
+            disabled={formLoading}
+            color="error"
+            variant="outlined"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={formLoading || !formData.name || !formData.assignee || !formData.dueDate}
+            color="primary"
+            disabled={formLoading || !formData.name || !formData.assignee || !formData.dueDate || formData.projectId === 0 || formData.priority === 0}
           >
             {formLoading ? 'Saving...' : editingTask ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success Notification */}
+      <Snackbar
+        open={successOpen}
+        autoHideDuration={3000}
+        onClose={() => setSuccessOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSuccessOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

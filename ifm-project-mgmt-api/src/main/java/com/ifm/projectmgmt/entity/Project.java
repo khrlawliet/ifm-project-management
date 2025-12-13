@@ -46,24 +46,4 @@ public class Project {
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Task> tasks = new ArrayList<>();
-
-    /**
-     * Helper method to add a task to this project.
-     *
-     * @param task the task to add
-     */
-    public void addTask(Task task) {
-        tasks.add(task);
-        task.setProject(this);
-    }
-
-    /**
-     * Helper method to remove a task from this project.
-     *
-     * @param task the task to remove
-     */
-    public void removeTask(Task task) {
-        tasks.remove(task);
-        task.setProject(null);
-    }
 }

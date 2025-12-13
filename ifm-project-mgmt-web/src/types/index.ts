@@ -1,8 +1,10 @@
-export enum TaskStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED'
-}
+export const TaskStatus = {
+  PENDING: 'PENDING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED'
+} as const;
+
+export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
 
 export interface Task {
   id?: number;
@@ -23,6 +25,13 @@ export interface Project {
   description?: string;
 }
 
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  fullName?: string;
+}
+
 export interface PaginatedResponse<T> {
   content: T[];
   totalElements: number;
@@ -38,6 +47,7 @@ export interface TaskFilters {
   startDate?: string;
   endDate?: string;
   sortBy?: 'priority' | 'dueDate';
+  taskName?: string;
   page?: number;
   size?: number;
 }
@@ -48,5 +58,5 @@ export interface CreateTaskRequest {
   dueDate: string;
   assignee: string;
   projectId: number;
-  status?: string;
+  status?: TaskStatus;
 }

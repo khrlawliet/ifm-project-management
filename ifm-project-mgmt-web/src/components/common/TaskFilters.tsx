@@ -79,7 +79,7 @@ const TaskFilters = ({
   return (
     <Grid container spacing={2}>
       {/* Project Filter */}
-      <Grid item xs={12} sm={6} md={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <ProjectFilter
           selectedProject={selectedProject}
           projects={projects}
@@ -88,7 +88,7 @@ const TaskFilters = ({
       </Grid>
 
       {/* Priority Filter */}
-      <Grid item xs={12} sm={6} md={3}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <PriorityFilter
           selectedPriority={selectedPriority}
           onChange={onPriorityChange}
@@ -97,7 +97,7 @@ const TaskFilters = ({
 
       {/* Status Filter */}
       {showStatusFilter && selectedStatus !== undefined && onStatusChange && (
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatusFilter
             selectedStatus={selectedStatus}
             onChange={onStatusChange}
@@ -107,7 +107,7 @@ const TaskFilters = ({
 
       {/* Date Range Filter - Date Pickers (Task List) */}
       {showDateRangePicker && onStartDateChange && onEndDateChange && (
-        <Grid item xs={12} sm={12} md={showStatusFilter ? 3 : 4}>
+        <Grid size={{ xs: 12, sm: 12, md: showStatusFilter ? 3 : 4 }}>
           <DueDateRangeFilter
             startDate={startDate ?? null}
             endDate={endDate ?? null}
@@ -119,7 +119,7 @@ const TaskFilters = ({
 
       {/* Date Range Filter - Selector (Calendar) */}
       {showDateRangeSelector && dateFilter && onDateFilterChange && (
-        <Grid item xs={12} sm={12} md={showStatusFilter ? 3 : 4}>
+        <Grid size={{ xs: 12, sm: 12, md: showStatusFilter ? 3 : 4 }}>
           <DateRangeSelector
             dateFilter={dateFilter}
             onChange={onDateFilterChange}

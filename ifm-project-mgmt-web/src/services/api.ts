@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Task, Project, PaginatedResponse, TaskFilters, CreateTaskRequest } from '../types';
+import type { Task, Project, User, PaginatedResponse, TaskFilters, CreateTaskRequest } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -99,6 +99,22 @@ export const projectApi = {
   // Delete project
   deleteProject: async (id: number): Promise<void> => {
     await apiClient.delete(`/projects/${id}`);
+  },
+};
+
+export const userApi = {
+  // Get all users
+  getUsers: async (): Promise<User[]> => {
+    const response = await apiClient.get<User[]>('/users');
+    return response.data;
+  },
+
+  // Search users by username or email
+  searchUsers: async (query: string): Promise<User[]> => {
+    const response = await apiClient.get<User[]>('/users/search', {
+      params: { q: query },
+    });
+    return response.data;
   },
 };
 

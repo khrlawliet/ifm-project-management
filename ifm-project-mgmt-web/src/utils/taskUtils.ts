@@ -68,7 +68,7 @@ export const getPriorityColor = (priority: number): 'error' | 'warning' | 'info'
  * @returns Hex color string
  */
 export const getPriorityBadgeColor = (priority: number): string => {
-  return COLORS.PRIORITY_BADGE[priority] || COLORS.PRIORITY_BADGE[TASK_PRIORITY.LOWEST];
+  return COLORS.PRIORITY_BADGE[priority as keyof typeof COLORS.PRIORITY_BADGE] || COLORS.PRIORITY_BADGE[TASK_PRIORITY.LOWEST];
 };
 
 /**

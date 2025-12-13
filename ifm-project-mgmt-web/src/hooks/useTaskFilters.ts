@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import type { Dayjs } from 'dayjs';
 import type { SelectChangeEvent } from '@mui/material/Select';
-import { DATE_FILTER } from '../constants/taskConstants';
+import { DATE_FILTER, type DateFilterType } from '../constants/taskConstants';
 
 interface UseTaskFiltersReturn {
   // State
@@ -16,7 +16,7 @@ interface UseTaskFiltersReturn {
   statusFilter: string;
   startDate: Dayjs | null;
   endDate: Dayjs | null;
-  dateFilter: typeof DATE_FILTER.ALL | typeof DATE_FILTER.THIS_WEEK;
+  dateFilter: DateFilterType;
 
   // Handlers
   handleProjectChange: (e: SelectChangeEvent) => void;
@@ -44,7 +44,7 @@ export const useTaskFilters = (): UseTaskFiltersReturn => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [startDate, setStartDate] = useState<Dayjs | null>(null);
   const [endDate, setEndDate] = useState<Dayjs | null>(null);
-  const [dateFilter, setDateFilter] = useState<typeof DATE_FILTER.ALL | typeof DATE_FILTER.THIS_WEEK>(DATE_FILTER.ALL);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>(DATE_FILTER.ALL);
 
   /**
    * Handle project selection change
@@ -85,7 +85,7 @@ export const useTaskFilters = (): UseTaskFiltersReturn => {
    * Handle date filter change (for calendar view)
    */
   const handleDateFilterChange = (e: SelectChangeEvent) => {
-    setDateFilter(e.target.value as typeof DATE_FILTER.ALL | typeof DATE_FILTER.THIS_WEEK);
+    setDateFilter(e.target.value as DateFilterType);
   };
 
   return {

@@ -40,6 +40,7 @@ public class TaskController {
      * Get all tasks with optional filters and sorting.
      *
      * @param status    the status filter (optional)
+     * @param taskName  the task name filter for search/auto-suggest (optional, partial match)
      * @param startDate the start date filter (optional)
      * @param endDate   the end date filter (optional)
      * @param sortBy    the field to sort by (priority or dueDate)
@@ -51,12 +52,16 @@ public class TaskController {
     @GetMapping(Constants.TASKS_PATH)
     @Operation(
             summary = "Get all tasks",
-            description = "Retrieve all tasks across all projects with optional status, date range filter, sorting, and pagination"
+            description = "Retrieve all tasks across all projects with optional status, task name (for auto-suggest), date range filter, sorting, and pagination. Task name search is cached for 5 minutes."
     )
     public ResponseEntity<PagedResponse<TaskResponse>> getAllTasks(
             @Parameter(description = "Status filter (PENDING, IN_PROGRESS, COMPLETED)")
             @RequestParam(required = false)
             TaskStatus status,
+
+            @Parameter(description = "Task name filter for search/auto-suggest (partial match, case-insensitive)")
+            @RequestParam(required = false)
+            String taskName,
 
             @Parameter(description = "Start date for filtering (yyyy-MM-dd)")
             @RequestParam(required = false)
@@ -84,10 +89,10 @@ public class TaskController {
             @RequestParam(defaultValue = "20")
             int size) {
 
-        log.info("GET request to fetch all tasks with status filter: {}", status);
+        log.info("GET request to fetch all tasks with filters - status: {}, taskName: {}", status, taskName);
 
         PagedResponse<TaskResponse> tasks = taskService.getAllTasks(
-                status, startDate, endDate, sortBy, order, page, size
+                status, taskName, startDate, endDate, sortBy, order, page, size
         );
 
         return ResponseEntity.ok(tasks);
