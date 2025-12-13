@@ -51,11 +51,6 @@ Linux/Mac:
 ./start.sh
 ```
 
-Windows:
-```bash
-start.bat
-```
-
 The script will:
 - Install frontend dependencies (if needed)
 - Start the backend API on http://localhost:8080
@@ -84,26 +79,8 @@ ifm/
 ├── ifm-project-mgmt-web/      # React Frontend
 ├── docker-compose.yml         # Docker setup
 ├── start.sh                   # Linux/Mac startup script
-└── start.bat                  # Windows startup script
+└── docker-rebuild.sh          # rebuild docker image and deploy locally
 ```
-
-## API Endpoints
-
-**Projects:**
-- `GET /api/projects` - List all projects
-- `POST /api/projects` - Create project
-
-**Tasks:**
-- `GET /api/tasks` - Get all tasks (with filters)
-- `POST /api/projects/{id}/tasks` - Create task
-- `PUT /api/tasks/{id}` - Update task
-- `DELETE /api/tasks/{id}` - Delete task
-
-**Query Parameters:**
-- `startDate` - Filter start date (YYYY-MM-DD)
-- `endDate` - Filter end date (YYYY-MM-DD)
-- `sortBy` - Sort by `priority` or `dueDate`
-- `order` - `asc` or `desc`
 
 ## Database
 
