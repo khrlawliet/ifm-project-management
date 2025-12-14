@@ -1,7 +1,9 @@
 import axios from 'axios';
 import type { Task, Project, User, PaginatedResponse, TaskFilters, CreateTaskRequest } from '../types';
 
-const API_BASE_URL = '/api';
+// In development: use '/api' (proxied by Vite to localhost:8080)
+// In production: use environment variable or fall back to '/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
