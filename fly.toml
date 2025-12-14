@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for ifm-project-management on 2025-12-14T15:14:02Z
+# fly.toml app configuration file generated for ifm-project-management-aiipwg on 2025-12-14T15:15:28Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'ifm-project-management'
-primary_region = 'cdg'
+app = 'ifm-project-management-aiipwg'
+primary_region = 'iad'
 
 [build]
 
