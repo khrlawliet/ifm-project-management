@@ -113,3 +113,6 @@ chmod +x start.sh
 
 - [API Documentation](ifm-project-mgmt-api/README.md)
 - [Frontend Documentation](ifm-project-mgmt-web/README.md)
+
+## Live Project Link
+ - https://ifm-project-management.vercel.app/
