@@ -88,6 +88,11 @@ const ServerDay = React.memo<ServerDayProps>(({ tasks, getDateBackgroundColor, d
     return <PickersDay {...other} day={day} outsideCurrentMonth={outsideCurrentMonth} />;
   }
 
+  const entries = Object.entries(taskCountsByPriority)
+    .sort(([a], [b]) => Number(a) - Number(b));
+
+  const isSingleItem = entries.length === 1;
+
   return (
     <Box
       sx={{
@@ -117,11 +122,12 @@ const ServerDay = React.memo<ServerDayProps>(({ tasks, getDateBackgroundColor, d
         }}
       />
       {hasTasks &&
-        Object.entries(taskCountsByPriority)
-          .sort(([a], [b]) => Number(a) - Number(b))
-          .map(([priorityId, count]) => {
-              const id = Number(priorityId);
-              const position = PRIORITY_BADGE_POSITION[id as keyof typeof PRIORITY_BADGE_POSITION] || DEFAULT_POSITION;
+       entries.map(([priorityId, count]) => {
+          const id = Number(priorityId);
+          
+          const position = isSingleItem
+            ? DEFAULT_POSITION 
+            : (PRIORITY_BADGE_POSITION[id as keyof typeof PRIORITY_BADGE_POSITION] || DEFAULT_POSITION);
 
             return (
               <Box

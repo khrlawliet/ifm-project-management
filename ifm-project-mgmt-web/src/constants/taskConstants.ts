@@ -144,4 +144,4 @@ export const PRIORITY_BADGE_POSITION = {
   [TASK_PRIORITY.LOWEST]:  { top: 30, right: 17 }
 } as const;
 
-export const DEFAULT_POSITION = { top: 0, right: 0 };
+export const DEFAULT_POSITION = { top: 3, right: 2 };
