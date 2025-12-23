@@ -28,6 +28,7 @@ public class CreateTaskRequest {
     private Integer priority;
 
     @NotNull(message = "Due date is required")
+    @FutureOrPresent(message = "Due date must be today or a future date")
     private LocalDate dueDate;
 
     @NotBlank(message = "Assignee is required")
