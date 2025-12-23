@@ -25,7 +25,23 @@ export const taskApi = {
     if (filters.size !== undefined) params.append('size', filters.size.toString());
 
     const response = await apiClient.get<PaginatedResponse<Task>>('/tasks', { params });
-    return response.data;
+    const data = response.data;
+
+    // Defensive: ensure content is always an array
+    if (!data || !Array.isArray(data.content)) {
+      console.error('Tasks API returned invalid paginated data:', data);
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: 0,
+        number: 0,
+        first: true,
+        last: true,
+      };
+    }
+
+    return data;
   },
 
   // Get tasks for a specific project with filters and pagination
@@ -39,7 +55,23 @@ export const taskApi = {
     if (filters.size !== undefined) params.append('size', filters.size.toString());
 
     const response = await apiClient.get<PaginatedResponse<Task>>(`/projects/${projectId}/tasks`, { params });
-    return response.data;
+    const data = response.data;
+
+    // Defensive: ensure content is always an array
+    if (!data || !Array.isArray(data.content)) {
+      console.error('Project tasks API returned invalid paginated data:', data);
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: 0,
+        number: 0,
+        first: true,
+        last: true,
+      };
+    }
+
+    return data;
   },
 
   // Get task by ID
@@ -77,7 +109,13 @@ export const projectApi = {
   // Get all projects
   getProjects: async (): Promise<Project[]> => {
     const response = await apiClient.get<Project[]>('/projects');
-    return response.data;
+    // Defensive: ensure we always return an array
+    const data = response.data;
+    if (!Array.isArray(data)) {
+      console.error('Projects API returned non-array data:', data);
+      return [];
+    }
+    return data;
   },
 
   // Get project by ID
@@ -108,7 +146,13 @@ export const userApi = {
   // Get all users
   getUsers: async (): Promise<User[]> => {
     const response = await apiClient.get<User[]>('/users');
-    return response.data;
+    const data = response.data;
+    // Defensive: ensure we always return an array
+    if (!Array.isArray(data)) {
+      console.error('Users API returned non-array data:', data);
+      return [];
+    }
+    return data;
   },
 
   // Search users by username or email
@@ -116,7 +160,13 @@ export const userApi = {
     const response = await apiClient.get<User[]>('/users/search', {
       params: { q: query },
     });
-    return response.data;
+    const data = response.data;
+    // Defensive: ensure we always return an array
+    if (!Array.isArray(data)) {
+      console.error('User search API returned non-array data:', data);
+      return [];
+    }
+    return data;
   },
 };
 

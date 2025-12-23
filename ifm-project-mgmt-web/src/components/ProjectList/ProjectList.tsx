@@ -1,46 +1,73 @@
-import { useState, useEffect } from 'react';
+/**
+ * ProjectList Component (Refactored - Modular Components)
+ *
+ * This component displays a list of projects with search and CRUD operations.
+ *
+ * Architecture:
+ * - Uses Context only for shared project data fetching
+ * - Dialog/form state managed locally in this component
+ * - Table and Dialog extracted into separate reusable components
+ * - Clean separation of concerns
+ */
+
+import { useState } from 'react';
 import {
   Box,
   Paper,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  IconButton,
   InputAdornment,
   Snackbar,
   Alert,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from '@mui/icons-material';
+import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
+
+// Contexts
+import { ProjectProvider, useProjectContext } from '../../contexts/ProjectContext';
+
+// API
 import { projectApi } from '../../services/api';
+
+// Types
 import type { Project } from '../../types';
+
+// Components
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
+import ConfirmDialog from '../common/ConfirmDialog';
+import ProjectTable from './ProjectTable';
+import ProjectDialog from './ProjectDialog';
 
 interface ProjectListProps {
   onProjectChanged?: () => void;
 }
 
-const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+interface ProjectFormData {
+  name: string;
+  description: string;
+}
 
-  // Project dialog state
+/**
+ * ProjectList Content Component
+ * Contains the actual UI logic with local dialog state
+ */
+const ProjectListContent = () => {
+  // Access project context (shared data only)
+  const {
+    filteredProjects,
+    loading,
+    error,
+    searchQuery,
+    loadProjects,
+    handleSearchChange,
+    deleteProject,
+  } = useProjectContext();
+
+  // Local dialog state (UI-only, no need for context)
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProjectFormData>({
     name: '',
     description: '',
   });
@@ -51,45 +78,12 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
+  // Confirm delete dialog state
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
 
-  useEffect(() => {
-    // Filter projects based on search query
-    if (searchQuery.trim() === '') {
-      setFilteredProjects(projects);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredProjects(
-        projects.filter(
-          (project) =>
-            project.name.toLowerCase().includes(query) ||
-            (project.description && project.description.toLowerCase().includes(query))
-        )
-      );
-    }
-  }, [projects, searchQuery]);
-
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await projectApi.getProjects();
-      setProjects(data);
-      setFilteredProjects(data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleOpenCreateDialog = () => {
+  // Dialog actions
+  const openCreateDialog = () => {
     setEditingProject(null);
     setFormData({
       name: '',
@@ -99,7 +93,7 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
     setDialogOpen(true);
   };
 
-  const handleOpenEditDialog = (project: Project) => {
+  const openEditDialog = (project: Project) => {
     setEditingProject(project);
     setFormData({
       name: project.name,
@@ -109,77 +103,78 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
     setDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
+  const closeDialog = () => {
     setDialogOpen(false);
     setEditingProject(null);
     setFormError(null);
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleFormChange = (name: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleFormSubmit = async () => {
     setFormLoading(true);
     setFormError(null);
 
     try {
       if (editingProject) {
-        // Update existing project
         await projectApi.updateProject(editingProject.id, formData);
         setSuccessMessage('Project updated successfully!');
       } else {
-        // Create new project
         await projectApi.createProject(formData);
         setSuccessMessage('Project created successfully!');
       }
-      handleCloseDialog();
+
+      closeDialog();
       setSuccessOpen(true);
-      loadProjects();
-      if (onProjectChanged) {
-        onProjectChanged();
-      }
-    } catch (err: any) {
-      setFormError(err.response?.data?.message || `Failed to ${editingProject ? 'update' : 'create'} project`);
+      await loadProjects();
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setFormError(error.response?.data?.message || `Failed to ${editingProject ? 'update' : 'create'} project`);
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDelete = async (projectId: number) => {
-    if (!window.confirm('Are you sure you want to delete this project? This will also delete all associated tasks.')) {
-      return;
-    }
+  // Delete handlers
+  const handleDeleteClick = (projectId: number) => {
+    setProjectToDelete(projectId);
+    setConfirmDeleteOpen(true);
+  };
 
-    try {
-      await projectApi.deleteProject(projectId);
-      loadProjects();
-      if (onProjectChanged) {
-        onProjectChanged();
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete project');
+  const handleConfirmDelete = async () => {
+    if (projectToDelete !== null) {
+      await deleteProject(projectToDelete);
+      setConfirmDeleteOpen(false);
+      setProjectToDelete(null);
     }
   };
 
-  if (loading && projects.length === 0) {
+  const handleCancelDelete = () => {
+    setConfirmDeleteOpen(false);
+    setProjectToDelete(null);
+  };
+
+  // Render loading state
+  if (loading && filteredProjects.length === 0) {
     return <LoadingSpinner message="Loading projects..." />;
   }
 
   return (
     <>
       <Paper elevation={3} sx={{ p: 3 }}>
+        {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h5">Projects</Typography>
           <Button
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
-            onClick={handleOpenCreateDialog}
+            onClick={openCreateDialog}
           >
             Create Project
           </Button>
@@ -191,134 +186,55 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
             fullWidth
             placeholder="Search projects by name or description..."
             value={searchQuery}
-            onChange={handleSearchChange}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+            onChange={(e) => handleSearchChange(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              },
             }}
           />
         </Box>
 
+        {/* Error Message */}
         {error && <ErrorMessage message={error} onRetry={loadProjects} />}
 
         {/* Project Table */}
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Project Name</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={3}>
-                    <LoadingSpinner message="Loading projects..." />
-                  </TableCell>
-                </TableRow>
-              ) : filteredProjects.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} align="center">
-                    <Typography variant="body2" color="text.secondary">
-                      {searchQuery ? 'No projects found matching your search.' : 'No projects found. Create your first project to get started.'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredProjects.map((project) => (
-                  <TableRow key={project.id} hover>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="medium">
-                        {project.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {project.description || 'No description'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleOpenEditDialog(project)}
-                        title="Edit project"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDelete(project.id)}
-                        title="Delete project"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <ProjectTable
+          projects={filteredProjects}
+          loading={loading}
+          searchQuery={searchQuery}
+          onEdit={openEditDialog}
+          onDelete={handleDeleteClick}
+        />
       </Paper>
 
       {/* Create/Edit Project Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingProject ? 'Edit Project' : 'Create New Project'}</DialogTitle>
-        <DialogContent>
-          {formError && (
-            <Box mb={2}>
-              <Typography color="error">{formError}</Typography>
-            </Box>
-          )}
-          <Box component="form" noValidate sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              required
-              label="Project Name"
-              name="name"
-              value={formData.name}
-              onChange={handleFormChange}
-              disabled={formLoading}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Description"
-              name="description"
-              value={formData.description}
-              onChange={handleFormChange}
-              disabled={formLoading}
-              multiline
-              rows={4}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={handleCloseDialog}
-            disabled={formLoading}
-            color="error"
-            variant="outlined"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            color="primary"
-            disabled={formLoading || !formData.name}
-          >
-            {formLoading ? 'Saving...' : editingProject ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ProjectDialog
+        open={dialogOpen}
+        editingProject={editingProject}
+        formData={formData}
+        formError={formError}
+        formLoading={formLoading}
+        onClose={closeDialog}
+        onFormChange={handleFormChange}
+        onSubmit={handleFormSubmit}
+      />
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete Project"
+        message="Are you sure you want to delete this project? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="error"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
 
       {/* Success Notification */}
       <Snackbar
@@ -337,6 +253,18 @@ const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
         </Alert>
       </Snackbar>
     </>
+  );
+};
+
+/**
+ * ProjectList Component with Context Provider
+ * Only wraps with ProjectContext for shared project data
+ */
+const ProjectList = ({ onProjectChanged }: ProjectListProps) => {
+  return (
+    <ProjectProvider onProjectChanged={onProjectChanged}>
+      <ProjectListContent />
+    </ProjectProvider>
   );
 };
 

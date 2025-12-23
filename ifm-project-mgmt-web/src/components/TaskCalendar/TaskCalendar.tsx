@@ -1,17 +1,15 @@
 /**
- * TaskCalendar Component (Refactored)
+ * TaskCalendar Component (Refactored with Context)
  *
  * This component displays tasks in a calendar view with visual indicators for task severity.
  *
  * Key improvements:
- * - Uses reusable filter components instead of duplicating code
- * - Uses utility functions for color calculations and date operations
- * - Uses constants instead of magic strings
- * - Uses custom hook for filter management
- * - Follows Single Responsibility Principle
+ * - Uses React Context for state management (cleaner, more maintainable)
+ * - Separation of concerns with TaskCalendarContext
+ * - Reduced component complexity and improved readability
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -28,8 +26,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Grid,
 } from '@mui/material';
-import { Grid } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickersDay } from '@mui/x-date-pickers/PickersDay';
 import type { PickersDayProps } from '@mui/x-date-pickers/PickersDay';
@@ -37,9 +36,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 
-// API and Types
-import { taskApi, projectApi } from '../../services/api';
-import type { Task, Project } from '../../types';
+// Contexts
+import { TaskCalendarProvider, useTaskCalendarContext } from '../../contexts/TaskCalendarContext';
+
+// Types
+import type { Task } from '../../types';
 
 // Reusable Components
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -55,318 +56,180 @@ import {
   getDueDateTextColor,
   getTasksForDate,
   sortTasksByPriority,
-  filterTasksByPriority,
-  filterTasksByStatus,
   getTaskCountsByPriority,
 } from '../../utils/taskUtils';
 import {
-  PAGINATION,
   SORT_BY,
   DATE_FILTER,
   FILTER_LABELS,
   COLORS,
 } from '../../constants/taskConstants';
 
-// Custom Hook
-import { useTaskFilters } from '../../hooks/useTaskFilters';
-
 interface TaskCalendarProps {
   refresh?: number;
 }
 
 /**
- * TaskCalendar Component
- *
- * Displays tasks on a calendar with:
- * - Project, priority, status, and date range filters
- * - Visual indicators (colors) for task status severity
- * - Multiple small badges per day, one for each priority level
- * - Each badge shows count and color-coded by priority
- * - Detailed task list for selected date
+ * Custom day component for the calendar
  */
-const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
-  // ============================================
-  // State Management
-  // ============================================
+interface ServerDayProps extends PickersDayProps {
+  tasks: Task[];
+  getDateBackgroundColor: (date: Dayjs) => string | null;
+}
 
-  // Calendar state
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const ServerDay = React.memo<ServerDayProps>(({ tasks, getDateBackgroundColor, day, outsideCurrentMonth, ...other }: ServerDayProps) => {
+  const backgroundColor = getDateBackgroundColor(day);
+  const taskCountsByPriority = getTaskCountsByPriority(tasks, day);
+  const hasTasks = Object.keys(taskCountsByPriority).length > 0;
 
-  // Filter state (using custom hook)
+  if (outsideCurrentMonth) {
+    return <PickersDay {...other} day={day} outsideCurrentMonth={outsideCurrentMonth} />;
+  }
+
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        display: 'inline-block',
+      }}
+    >
+      <PickersDay
+        {...other}
+        outsideCurrentMonth={outsideCurrentMonth}
+        day={day}
+        sx={{
+          backgroundColor: backgroundColor || 'transparent',
+          color: backgroundColor ? '#fff' : 'inherit',
+          fontWeight: backgroundColor ? 'bold' : 'normal',
+          '&:hover': {
+            backgroundColor: backgroundColor
+              ? `${backgroundColor}dd`
+              : 'rgba(0, 0, 0, 0.04)',
+          },
+          '&.Mui-selected': {
+            backgroundColor: backgroundColor
+              ? `${backgroundColor}!important`
+              : undefined,
+            color: backgroundColor ? '#fff!important' : undefined,
+          },
+        }}
+      />
+      {hasTasks &&
+        Object.entries(taskCountsByPriority)
+          .sort(([a], [b]) => Number(a) - Number(b))
+          .map(([priority, count], index) => {
+            const curvePositions = [
+              { top: 3, right: 2 },
+              { top: 12, right: -2 },
+              { top: 22, right: -1 },
+              { top: 28, right: 7 },
+              { top: 30, right: 17 }
+            ];
+
+            const position = curvePositions[index] || curvePositions[0];
+
+            return (
+              <Box
+                key={priority}
+                sx={{
+                  position: 'absolute',
+                  ...position,
+                  backgroundColor: COLORS.PRIORITY_BADGE[Number(priority) as keyof typeof COLORS.PRIORITY_BADGE],
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: '10px',
+                  height: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '7px',
+                  fontWeight: 'bold',
+                  border: '0.5px solid white',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  zIndex: 1,
+                }}
+              >
+                {count}
+              </Box>
+            );
+          })
+      }
+    </Box>
+  );
+});
+
+ServerDay.displayName = 'ServerDay';
+
+/**
+ * TaskCalendar Content Component
+ * Contains the actual UI logic, separated from provider
+ */
+const TaskCalendarContent = () => {
+  // Access calendar context
   const {
+    tasks,
+    projects,
+    loading,
+    error,
+    selectedDate,
     selectedProject,
     priorityFilter,
     statusFilter,
     dateFilter,
+    sortBy,
+    loadTasksForMonth,
+    handleDateChange,
     handleProjectChange,
     handlePriorityFilterChange,
     handleStatusFilterChange,
     handleDateFilterChange,
-  } = useTaskFilters();
+    handleSortChange,
+  } = useTaskCalendarContext();
 
-  // Task detail dialog state
+  // Local state for task detail dialog
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Sort state
-  const [sortBy, setSortBy] = useState<'priority' | 'dueDate'>(SORT_BY.DUE_DATE);
-
-  // ============================================
-  // Effects
-  // ============================================
-
-  /**
-   * Load projects on component mount
-   */
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  /**
-   * Load tasks when filters, date, or sort change
-   */
-  useEffect(() => {
-    loadTasksForMonth();
-  }, [selectedDate, selectedProject, dateFilter, priorityFilter, statusFilter, sortBy, refresh]);
-
-  // ============================================
-  // Data Loading Functions
-  // ============================================
-
-  /**
-   * Load all available projects from API
-   */
-  const loadProjects = async () => {
-    try {
-      const data = await projectApi.getProjects();
-      setProjects(data);
-    } catch (err) {
-      console.error('Failed to load projects', err);
-    }
+  // Wrapper functions to match component interfaces
+  const handleProjectChangeWrapper = (e: SelectChangeEvent) => {
+    const value = e.target.value === '' ? '' : Number(e.target.value);
+    handleProjectChange(value);
   };
 
-  /**
-   * Load tasks for the current month/week from API
-   */
-  const loadTasksForMonth = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Determine date range based on dateFilter
-      let startDate: string;
-      let endDate: string;
-      const today = dayjs();
-
-      switch (dateFilter) {
-        case DATE_FILTER.THIS_WEEK:
-          // Get tasks for this week (Sunday to Saturday)
-          startDate = today.startOf('week').format('YYYY-MM-DD');
-          endDate = today.endOf('week').format('YYYY-MM-DD');
-          break;
-
-        case DATE_FILTER.NEXT_WEEK:
-          // Get tasks for next week (Sunday to Saturday)
-          const nextWeek = today.add(1, 'week');
-          startDate = nextWeek.startOf('week').format('YYYY-MM-DD');
-          endDate = nextWeek.endOf('week').format('YYYY-MM-DD');
-          break;
-
-        case DATE_FILTER.NEXT_MONTH:
-          // Get tasks for next month
-          const nextMonth = today.add(1, 'month');
-          startDate = nextMonth.startOf('month').format('YYYY-MM-DD');
-          endDate = nextMonth.endOf('month').format('YYYY-MM-DD');
-          break;
-
-        default:
-          // Get tasks for the entire current month
-          startDate = selectedDate.startOf('month').format('YYYY-MM-DD');
-          endDate = selectedDate.endOf('month').format('YYYY-MM-DD');
-          break;
-      }
-
-      let response;
-
-      // Use project-specific endpoint if project is selected
-      if (selectedProject) {
-        response = await taskApi.getTasks(Number(selectedProject), {
-          startDate,
-          endDate,
-          sortBy: sortBy,
-          size: PAGINATION.CALENDAR_PAGE_SIZE,
-        });
-      } else {
-        // Use general endpoint for all projects
-        response = await taskApi.getAllTasks({
-          startDate,
-          endDate,
-          sortBy: sortBy,
-          size: PAGINATION.CALENDAR_PAGE_SIZE,
-        });
-      }
-
-      // Apply client-side filters
-      let filteredTasks = filterTasksByPriority(response.content, priorityFilter);
-      filteredTasks = filterTasksByStatus(filteredTasks, statusFilter);
-
-      setTasks(filteredTasks);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
+  const handlePriorityFilterChangeWrapper = (e: SelectChangeEvent) => {
+    const value = e.target.value === '' ? '' : Number(e.target.value);
+    handlePriorityFilterChange(value);
   };
 
-  // ============================================
-  // Event Handlers
-  // ============================================
-
-  /**
-   * Handle calendar date change
-   */
-  const handleDateChange = (date: Dayjs | null) => {
-    if (date) {
-      setSelectedDate(date);
-    }
+  const handleStatusFilterChangeWrapper = (e: SelectChangeEvent) => {
+    handleStatusFilterChange(e.target.value);
   };
 
-  /**
-   * Open task detail dialog
-   */
+  const handleDateFilterChangeWrapper = (e: SelectChangeEvent) => {
+    handleDateFilterChange(e.target.value);
+  };
+
+  // Dialog handlers
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
     setDialogOpen(true);
   };
 
-  /**
-   * Close task detail dialog
-   */
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setSelectedTask(null);
   };
 
-  // ============================================
-  // Helper Functions
-  // ============================================
-
-  /**
-   * Get background color for a calendar date based on task severity
-   */
+  // Helper functions
   const getDateBackgroundColor = (date: Dayjs): string | null => {
     const severity = getDateSeverity(tasks, date);
     return getSeverityColor(severity);
   };
 
-  /**
-   * Get sorted tasks for the selected date
-   */
   const getTasksForSelectedDate = (): Task[] => {
     const dateTasks = getTasksForDate(tasks, selectedDate);
     return sortTasksByPriority(dateTasks);
   };
-
-  // ============================================
-  // Calendar Day Component
-  // ============================================
-
-  /**
-   * Custom day component for the calendar
-   * Shows colored background and multiple small badges for each priority level
-   */
-  const ServerDay = (props: PickersDayProps) => {
-    const { day, outsideCurrentMonth, ...other } = props;
-    const backgroundColor = getDateBackgroundColor(day);
-    const taskCountsByPriority = getTaskCountsByPriority(tasks, day);
-    const hasTasks = Object.keys(taskCountsByPriority).length > 0;
-
-    // Don't apply custom styling for days outside current month
-    if (outsideCurrentMonth) {
-      return <PickersDay {...props} />;
-    }
-
-    return (
-      <Box
-        sx={{
-          position: 'relative',
-          display: 'inline-block',
-        }}
-      >
-        <PickersDay
-          {...other}
-          outsideCurrentMonth={outsideCurrentMonth}
-          day={day}
-          sx={{
-            backgroundColor: backgroundColor || 'transparent',
-            color: backgroundColor ? '#fff' : 'inherit',
-            fontWeight: backgroundColor ? 'bold' : 'normal',
-            '&:hover': {
-              backgroundColor: backgroundColor
-                ? `${backgroundColor}dd` // Slightly darker on hover
-                : 'rgba(0, 0, 0, 0.04)',
-            },
-            '&.Mui-selected': {
-              backgroundColor: backgroundColor
-                ? `${backgroundColor}!important`
-                : undefined,
-              color: backgroundColor ? '#fff!important' : undefined,
-            },
-          }}
-        />
-        {hasTasks &&
-          Object.entries(taskCountsByPriority)
-            .sort(([a], [b]) => Number(a) - Number(b)) // Sort by priority (1-5)
-            .map(([priority, count], index) => {
-              // Position badges along the curve at top-right
-              // Positions follow the circular arc from right to top
-              const curvePositions = [
-                { top: 3, right: 2 },      // First: far right
-                { top: 2, right: 6 },      // Second: mid-right
-                { top: 4, right: 10 },     // Third: center
-                { top: 8, right: 13 },     // Fourth: mid-left
-                { top: 13, right: 15 },    // Fifth: far left
-              ];
-
-              const position = curvePositions[index] || curvePositions[0];
-
-              return (
-                <Box
-                  key={priority}
-                  sx={{
-                    position: 'absolute',
-                    ...position,
-                    backgroundColor: COLORS.PRIORITY_BADGE[Number(priority) as keyof typeof COLORS.PRIORITY_BADGE],
-                    color: '#fff',
-                    borderRadius: '50%',
-                    width: '10px',
-                    height: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '7px',
-                    fontWeight: 'bold',
-                    border: '0.5px solid white',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                    zIndex: 1,
-                  }}
-                >
-                  {count}
-                </Box>
-              );
-            })
-        }
-      </Box>
-    );
-  };
-
-  // ============================================
-  // Main Render
-  // ============================================
 
   const tasksOnSelectedDate = getTasksForSelectedDate();
 
@@ -386,11 +249,11 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
         <TaskFilters
           selectedProject={selectedProject}
           projects={projects}
-          onProjectChange={handleProjectChange}
+          onProjectChange={handleProjectChangeWrapper}
           selectedPriority={priorityFilter}
-          onPriorityChange={handlePriorityFilterChange}
+          onPriorityChange={handlePriorityFilterChangeWrapper}
           selectedStatus={statusFilter}
-          onStatusChange={handleStatusFilterChange}
+          onStatusChange={handleStatusFilterChangeWrapper}
           showDateRangePicker={false}
           showDateRangeSelector={false}
           showStatusFilter={true}
@@ -407,7 +270,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
                 <InputLabel shrink>Date Range</InputLabel>
                 <Select
                   value={dateFilter}
-                  onChange={handleDateFilterChange}
+                  onChange={handleDateFilterChangeWrapper}
                   label="Date Range"
                   displayEmpty
                   notched
@@ -429,7 +292,12 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
               <InputLabel>Sort By</InputLabel>
               <Select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === 'priority' || value === 'dueDate') {
+                    handleSortChange(value);
+                  }
+                }}
                 label="Sort By"
               >
                 <MenuItem value={SORT_BY.DUE_DATE}>Due Date</MenuItem>
@@ -447,27 +315,31 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
           <Typography variant="body2" fontWeight="medium" component="div">
             Active Filters:
             <Chip
-              label={`Project: ${selectedProject ? projects.find(p => p.id === Number(selectedProject))?.name || 'Selected Project' : FILTER_LABELS.ALL_PROJECTS}`}
+              label={`Project: ${
+                selectedProject
+                  ? projects.find(p => p.id === Number(selectedProject))?.name || 'Selected Project'
+                  : FILTER_LABELS.ALL_PROJECTS
+              }`}
               size="small"
               sx={{ ml: 1, mr: 1 }}
             />
             <Chip
-              label={`Priority: ${priorityFilter ? priorityFilter : FILTER_LABELS.ALL_PRIORITIES}`}
+              label={`Priority: ${priorityFilter || FILTER_LABELS.ALL_PRIORITIES}`}
               size="small"
               sx={{ mr: 1 }}
             />
             <Chip
-              label={`Status: ${statusFilter ? statusFilter : FILTER_LABELS.ALL_STATUSES}`}
+              label={`Status: ${statusFilter || FILTER_LABELS.ALL_STATUSES}`}
               size="small"
               sx={{ mr: 1 }}
             />
             <Chip
-              label={
-                dateFilter === DATE_FILTER.THIS_WEEK ? FILTER_LABELS.THIS_WEEK :
-                dateFilter === DATE_FILTER.NEXT_WEEK ? FILTER_LABELS.NEXT_WEEK :
-                dateFilter === DATE_FILTER.NEXT_MONTH ? FILTER_LABELS.NEXT_MONTH :
-                FILTER_LABELS.CURRENT_MONTH
-              }
+              label={(() => {
+                if (dateFilter === DATE_FILTER.THIS_WEEK) return FILTER_LABELS.THIS_WEEK;
+                if (dateFilter === DATE_FILTER.NEXT_WEEK) return FILTER_LABELS.NEXT_WEEK;
+                if (dateFilter === DATE_FILTER.NEXT_MONTH) return FILTER_LABELS.NEXT_MONTH;
+                return FILTER_LABELS.CURRENT_MONTH;
+              })()}
               size="small"
               color="primary"
               sx={{ mr: 1 }}
@@ -477,7 +349,7 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
       </Box>
 
       {/* Info Note */}
-      <Box mb={2} sx={{ p: 1.5, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #90caf9' }}>
+      <Box mb={2} sx={{ p: 1.5, bgcolor: '#f9bf6939', borderRadius: 1, border: '1px solid #90caf9' }}>
         <Typography variant="body2" color="text.secondary">
           Click a date to view assigned tasks
         </Typography>
@@ -492,7 +364,13 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
               onChange={handleDateChange}
               loading={loading}
               slots={{
-                day: ServerDay,
+                day: ServerDay as unknown as React.ComponentType<PickersDayProps>,
+              }}
+              slotProps={{
+                day: {
+                  tasks,
+                  getDateBackgroundColor,
+                } as Partial<ServerDayProps>,
               }}
               sx={{
                 width: '100%',
@@ -597,20 +475,25 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
             Tasks on {selectedDate.format('MMMM DD, YYYY')}
           </Typography>
 
-          {loading ? (
-            <LoadingSpinner message="Loading tasks..." />
-          ) : tasksOnSelectedDate.length === 0 ? (
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              minHeight="200px"
-            >
-              <Typography variant="body2" color="text.secondary">
-                No tasks scheduled for this date
-              </Typography>
-            </Box>
-          ) : (
+          {(() => {
+            if (loading) {
+              return <LoadingSpinner message="Loading tasks..." />;
+            }
+            if (tasksOnSelectedDate.length === 0) {
+              return (
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  minHeight="200px"
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    No tasks scheduled for this date
+                  </Typography>
+                </Box>
+              );
+            }
+            return (
             <Box sx={{ maxHeight: '500px', overflowY: 'auto' }}>
               {tasksOnSelectedDate.map((task) => (
                 <Card
@@ -638,7 +521,8 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
                 </Card>
               ))}
             </Box>
-          )}
+            );
+          })()}
         </Grid>
       </Grid>
 
@@ -703,6 +587,17 @@ const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
         )}
       </Dialog>
     </Paper>
+  );
+};
+
+/**
+ * TaskCalendar Component with Context Provider
+ */
+const TaskCalendar = ({ refresh }: TaskCalendarProps) => {
+  return (
+    <TaskCalendarProvider refresh={refresh}>
+      <TaskCalendarContent />
+    </TaskCalendarProvider>
   );
 };
 
