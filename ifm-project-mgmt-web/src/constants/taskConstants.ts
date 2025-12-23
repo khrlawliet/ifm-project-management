@@ -135,3 +135,13 @@ export const PAGINATION = {
   ROWS_PER_PAGE_OPTIONS: [5, 10, 25, 50],
   CALENDAR_PAGE_SIZE: 100,
 } as const;
+
+export const PRIORITY_BADGE_POSITION = {
+  [TASK_PRIORITY.HIGHEST]: { top: 3, right: 2 },
+  [TASK_PRIORITY.HIGH]:    { top: 12, right: -2 },
+  [TASK_PRIORITY.MEDIUM]:  { top: 22, right: -1 },
+  [TASK_PRIORITY.LOW]:     { top: 28, right: 7 },
+  [TASK_PRIORITY.LOWEST]:  { top: 30, right: 17 }
+} as const;
+
+export const DEFAULT_POSITION = { top: 0, right: 0 };

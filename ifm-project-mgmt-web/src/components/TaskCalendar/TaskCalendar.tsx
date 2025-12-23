@@ -63,6 +63,8 @@ import {
   DATE_FILTER,
   FILTER_LABELS,
   COLORS,
+  PRIORITY_BADGE_POSITION,
+  DEFAULT_POSITION
 } from '../../constants/taskConstants';
 
 interface TaskCalendarProps {
@@ -117,24 +119,17 @@ const ServerDay = React.memo<ServerDayProps>(({ tasks, getDateBackgroundColor, d
       {hasTasks &&
         Object.entries(taskCountsByPriority)
           .sort(([a], [b]) => Number(a) - Number(b))
-          .map(([priority, count], index) => {
-            const curvePositions = [
-              { top: 3, right: 2 },
-              { top: 12, right: -2 },
-              { top: 22, right: -1 },
-              { top: 28, right: 7 },
-              { top: 30, right: 17 }
-            ];
-
-            const position = curvePositions[index] || curvePositions[0];
+          .map(([priorityId, count]) => {
+              const id = Number(priorityId);
+              const position = PRIORITY_BADGE_POSITION[id as keyof typeof PRIORITY_BADGE_POSITION] || DEFAULT_POSITION;
 
             return (
               <Box
-                key={priority}
+                key={priorityId}
                 sx={{
                   position: 'absolute',
                   ...position,
-                  backgroundColor: COLORS.PRIORITY_BADGE[Number(priority) as keyof typeof COLORS.PRIORITY_BADGE],
+                  backgroundColor: COLORS.PRIORITY_BADGE[Number(priorityId) as keyof typeof COLORS.PRIORITY_BADGE],
                   color: '#fff',
                   borderRadius: '50%',
                   width: '10px',
