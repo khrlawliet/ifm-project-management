@@ -14,6 +14,7 @@ import {
 import TaskList from './components/TaskList/TaskList';
 import TaskCalendar from './components/TaskCalendar/TaskCalendar';
 import ProjectList from './components/ProjectList/ProjectList';
+import { AppProvider } from './contexts/AppContext';
 
 const theme = createTheme({
   palette: {
@@ -66,38 +67,40 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{ flexGrow: 1 }}>
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              IFM Project Management
-            </Typography>
-          </Toolbar>
-        </AppBar>
+      <AppProvider>
+        <CssBaseline />
+        <Box sx={{ flexGrow: 1 }}>
+          <AppBar position="static">
+            <Toolbar>
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                IFM Project Management
+              </Typography>
+            </Toolbar>
+          </AppBar>
 
-        <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={activeTab} onChange={handleTabChange} aria-label="project management tabs">
-              <Tab label="Projects" />
-              <Tab label="Tasks" />
-              <Tab label="Calendar" />
-            </Tabs>
-          </Box>
+          <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs value={activeTab} onChange={handleTabChange} aria-label="project management tabs">
+                <Tab label="Projects" />
+                <Tab label="Tasks" />
+                <Tab label="Calendar" />
+              </Tabs>
+            </Box>
 
-          <TabPanel value={activeTab} index={0}>
-            <ProjectList onProjectChanged={handleTaskChanged} />
-          </TabPanel>
+            <TabPanel value={activeTab} index={0}>
+              <ProjectList onProjectChanged={handleTaskChanged} />
+            </TabPanel>
 
-          <TabPanel value={activeTab} index={1}>
-            <TaskList onTaskChanged={handleTaskChanged} />
-          </TabPanel>
+            <TabPanel value={activeTab} index={1}>
+              <TaskList onTaskChanged={handleTaskChanged} />
+            </TabPanel>
 
-          <TabPanel value={activeTab} index={2}>
-            <TaskCalendar refresh={refreshKey} />
-          </TabPanel>
-        </Container>
-      </Box>
+            <TabPanel value={activeTab} index={2}>
+              <TaskCalendar refresh={refreshKey} />
+            </TabPanel>
+          </Container>
+        </Box>
+      </AppProvider>
     </ThemeProvider>
   );
 }

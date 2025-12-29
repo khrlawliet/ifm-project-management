@@ -1,10 +1,11 @@
 /**
  * ProjectContext - Manages project list state and search
  */
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { projectApi } from '../services/api';
 import type { Project } from '../types';
+import { useAppContext } from './AppContext';
 
 interface ProjectContextState {
   // Data
@@ -40,50 +41,30 @@ interface ProjectProviderProps {
 }
 
 export const ProjectProvider = ({ children, onProjectChanged }: ProjectProviderProps) => {
-  // Data state
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Get shared projects from AppContext
+  const { projects, projectsLoading, refreshProjects } = useAppContext();
+
+  // Local state
   const [error, setError] = useState<string | null>(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load projects from API
-  const loadProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await projectApi.getProjects();
-      setProjects(data);
-      setFilteredProjects(data);
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Alias for consistency with existing code
+  const loading = projectsLoading;
+  const loadProjects = refreshProjects;
 
-  // Load projects on mount
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  // Filter projects when search query changes
-  useEffect(() => {
+  // Filter projects based on search query (derived state using useMemo)
+  const filteredProjects = useMemo(() => {
     if (searchQuery.trim() === '') {
-      setFilteredProjects(projects);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredProjects(
-        projects.filter(
-          (project) =>
-            project.name.toLowerCase().includes(query) ||
-            (project.description?.toLowerCase().includes(query) ?? false)
-        )
-      );
+      return projects;
     }
+    const query = searchQuery.toLowerCase();
+    return projects.filter(
+      (project) =>
+        project.name.toLowerCase().includes(query) ||
+        (project.description?.toLowerCase().includes(query) ?? false)
+    );
   }, [projects, searchQuery]);
 
   // Action handlers

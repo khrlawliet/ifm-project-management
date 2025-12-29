@@ -4,10 +4,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Dayjs } from 'dayjs';
-import { taskApi, projectApi, userApi } from '../services/api';
+import { taskApi } from '../services/api';
 import type { Task, Project, User, TaskFilters as TaskFiltersType } from '../types';
 import { PAGINATION, SORT_BY } from '../constants/taskConstants';
 import { filterTasksByPriority, filterTasksByStatus } from '../utils/taskUtils';
+import { useAppContext } from './AppContext';
 
 interface TaskContextState {
   // Data
@@ -67,10 +68,11 @@ interface TaskProviderProps {
 }
 
 export const TaskProvider = ({ children, onTaskChanged }: TaskProviderProps) => {
+  // Get shared data from AppContext
+  const { projects, users } = useAppContext();
+
   // Data state
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,24 +98,6 @@ export const TaskProvider = ({ children, onTaskChanged }: TaskProviderProps) => 
   });
 
   // Load functions
-  const loadProjects = useCallback(async () => {
-    try {
-      const data = await projectApi.getProjects();
-      setProjects(data);
-    } catch (err) {
-      console.error('Failed to load projects', err);
-    }
-  }, []);
-
-  const loadUsers = useCallback(async () => {
-    try {
-      const data = await userApi.getUsers();
-      setUsers(data);
-    } catch (err) {
-      console.error('Failed to load users', err);
-    }
-  }, []);
-
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
@@ -220,12 +204,6 @@ export const TaskProvider = ({ children, onTaskChanged }: TaskProviderProps) => 
       setError(error.response?.data?.message || 'Failed to delete task');
     }
   }, [loadTasks, onTaskChanged]);
-
-  // Load projects and users on mount
-  useEffect(() => {
-    loadProjects();
-    loadUsers();
-  }, [loadProjects, loadUsers]);
 
   // Update API filters when relevant filters change
   useEffect(() => {

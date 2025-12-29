@@ -5,10 +5,11 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import type { ReactNode } from 'react';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import { taskApi, projectApi } from '../services/api';
+import { taskApi } from '../services/api';
 import type { Task, Project } from '../types';
 import { PAGINATION, SORT_BY, DATE_FILTER } from '../constants/taskConstants';
 import { filterTasksByPriority, filterTasksByStatus } from '../utils/taskUtils';
+import { useAppContext } from './AppContext';
 
 interface TaskCalendarContextState {
   // Data
@@ -55,9 +56,11 @@ interface TaskCalendarProviderProps {
 }
 
 export const TaskCalendarProvider = ({ children, refresh }: TaskCalendarProviderProps) => {
+  // Get shared projects from AppContext
+  const { projects } = useAppContext();
+
   // Data state
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,11 +74,6 @@ export const TaskCalendarProvider = ({ children, refresh }: TaskCalendarProvider
   const [dateFilter, setDateFilter] = useState<string>(DATE_FILTER.ALL);
   const [sortBy, setSortBy] = useState<'priority' | 'dueDate'>(SORT_BY.DUE_DATE);
 
-  // Load projects on mount
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
   // Load tasks when dependencies change
   useEffect(() => {
     loadTasksForMonth();
@@ -83,14 +81,6 @@ export const TaskCalendarProvider = ({ children, refresh }: TaskCalendarProvider
   }, [selectedDate, selectedProject, dateFilter, priorityFilter, statusFilter, sortBy, refresh]);
 
   // Load functions
-  const loadProjects = async () => {
-    try {
-      const data = await projectApi.getProjects();
-      setProjects(data);
-    } catch (err) {
-      console.error('Failed to load projects', err);
-    }
-  };
 
   const loadTasksForMonth = useCallback(async () => {
     try {
