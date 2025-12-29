@@ -43,17 +43,6 @@ spring:
       write-dates-as-timestamps: false
     time-zone: UTC
 
-  # ============================================
-  # Cache Configuration
-  # ============================================
-  cache:
-    type: caffeine
-    cache-names:
-      - taskById
-      - taskSearch
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=5m
-
 # ============================================
 # Server Configuration
 # ============================================
