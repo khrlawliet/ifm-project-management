@@ -122,7 +122,7 @@ const TaskListContent = () => {
 
   // Confirm delete dialog state
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
   // Dialog actions
   const openCreateDialog = () => {
@@ -140,7 +140,7 @@ const TaskListContent = () => {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (task: Task, users: User[]) => {
+  const openEditDialog = (task: Task) => {
     setEditingTask(task);
     setFormData({
       name: task.name,
@@ -215,15 +215,20 @@ const TaskListContent = () => {
 
   // Delete handlers
   const handleDeleteClick = (taskId: number) => {
-    setTaskToDelete(taskId);
-    setConfirmDeleteOpen(true);
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setTaskToDelete(task);
+      setConfirmDeleteOpen(true);
+    }
   };
 
   const handleConfirmDelete = async () => {
     if (taskToDelete !== null) {
-      await deleteTask(taskToDelete);
+      await deleteTask(taskToDelete.id!);
       setConfirmDeleteOpen(false);
       setTaskToDelete(null);
+      setSuccessMessage(`Task "${taskToDelete.name}" deleted successfully!`);
+      setSuccessOpen(true);
     }
   };
 
@@ -390,9 +395,6 @@ const TaskListContent = () => {
 
         {/* Task Table */}
         <TaskTable
-          tasks={tasks}
-          users={users}
-          loading={loading}
           onEdit={openEditDialog}
           onDelete={handleDeleteClick}
         />
@@ -418,8 +420,6 @@ const TaskListContent = () => {
         selectedUser={selectedUser}
         formError={formError}
         formLoading={formLoading}
-        projects={projects}
-        users={users}
         onClose={closeDialog}
         onFormChange={handleFormChange}
         onFormDateChange={handleFormDateChange}

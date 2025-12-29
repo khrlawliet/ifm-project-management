@@ -16,22 +16,18 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import type { Project } from '../../types';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { useProjectContext } from '../../contexts/ProjectContext';
 
 interface ProjectTableProps {
-  projects: Project[];
-  loading: boolean;
-  searchQuery: string;
   onEdit: (project: Project) => void;
   onDelete: (projectId: number) => void;
 }
 
 const ProjectTable = ({
-  projects,
-  loading,
-  searchQuery,
   onEdit,
   onDelete,
 }: ProjectTableProps) => {
+  const { filteredProjects, loading, searchQuery } = useProjectContext();
   return (
     <TableContainer>
       <Table>
@@ -53,7 +49,7 @@ const ProjectTable = ({
                 </TableRow>
               );
             }
-            if (projects.length === 0) {
+            if (filteredProjects.length === 0) {
               return (
                 <TableRow>
                   <TableCell colSpan={3} align="center">
@@ -66,7 +62,7 @@ const ProjectTable = ({
                 </TableRow>
               );
             }
-            return projects.map((project) => (
+            return filteredProjects.map((project) => (
               <TableRow key={project.id} hover>
                 <TableCell>
                   <Typography variant="body1" fontWeight="medium">

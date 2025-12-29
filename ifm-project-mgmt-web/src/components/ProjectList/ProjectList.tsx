@@ -80,7 +80,7 @@ const ProjectListContent = () => {
 
   // Confirm delete dialog state
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   // Dialog actions
   const openCreateDialog = () => {
@@ -142,15 +142,20 @@ const ProjectListContent = () => {
 
   // Delete handlers
   const handleDeleteClick = (projectId: number) => {
-    setProjectToDelete(projectId);
-    setConfirmDeleteOpen(true);
+    const project = filteredProjects.find(p => p.id === projectId);
+    if (project) {
+      setProjectToDelete(project);
+      setConfirmDeleteOpen(true);
+    }
   };
 
   const handleConfirmDelete = async () => {
     if (projectToDelete !== null) {
-      await deleteProject(projectToDelete);
+      await deleteProject(projectToDelete.id);
       setConfirmDeleteOpen(false);
       setProjectToDelete(null);
+      setSuccessMessage(`Project "${projectToDelete.name}" deleted successfully!`);
+      setSuccessOpen(true);
     }
   };
 
@@ -204,9 +209,6 @@ const ProjectListContent = () => {
 
         {/* Project Table */}
         <ProjectTable
-          projects={filteredProjects}
-          loading={loading}
-          searchQuery={searchQuery}
           onEdit={openEditDialog}
           onDelete={handleDeleteClick}
         />

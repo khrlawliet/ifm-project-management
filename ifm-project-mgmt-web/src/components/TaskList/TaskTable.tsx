@@ -15,29 +15,25 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import type { Task, User } from '../../types';
+import type { Task } from '../../types';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { PriorityChip, StatusChip } from '../common/TaskChips';
 import {
   getDueDateBackgroundColor,
   getDueDateTextColor,
 } from '../../utils/taskUtils';
+import { useTaskContext } from '../../contexts/TaskContext';
 
 interface TaskTableProps {
-  tasks: Task[];
-  users: User[];
-  loading: boolean;
-  onEdit: (task: Task, users: User[]) => void;
+  onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
 }
 
 const TaskTable = ({
-  tasks,
-  users,
-  loading,
   onEdit,
   onDelete,
 }: TaskTableProps) => {
+  const { tasks, loading } = useTaskContext();
 
   return (
     <TableContainer>
@@ -99,7 +95,7 @@ const TaskTable = ({
                   <IconButton
                     size="small"
                     color="primary"
-                    onClick={() => onEdit(task, users)}
+                    onClick={() => onEdit(task)}
                     title="Edit task"
                   >
                     <EditIcon fontSize="small" />

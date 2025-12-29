@@ -24,8 +24,9 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
-import type { Task, User, CreateTaskRequest, Project } from '../../types';
+import type { Task, User, CreateTaskRequest } from '../../types';
 import { PRIORITY_LABELS, TASK_STATUS } from '../../constants/taskConstants';
+import { useTaskContext } from '../../contexts/TaskContext';
 
 interface TaskDialogProps {
   open: boolean;
@@ -35,8 +36,6 @@ interface TaskDialogProps {
   selectedUser: User | null;
   formError: string | null;
   formLoading: boolean;
-  projects: Project[];
-  users: User[];
   onClose: () => void;
   onFormChange: (name: string, value: string | number) => void;
   onFormDateChange: (date: Dayjs | null) => void;
@@ -52,14 +51,13 @@ const TaskDialog = ({
   selectedUser,
   formError,
   formLoading,
-  projects,
-  users,
   onClose,
   onFormChange,
   onFormDateChange,
   onUserChange,
   onSubmit,
 }: TaskDialogProps) => {
+  const { projects, users } = useTaskContext();
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</DialogTitle>
