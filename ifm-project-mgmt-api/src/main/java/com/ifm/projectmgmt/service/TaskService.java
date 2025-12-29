@@ -1,6 +1,7 @@
 package com.ifm.projectmgmt.service;
 
 import com.ifm.projectmgmt.dto.request.CreateTaskRequest;
+import com.ifm.projectmgmt.dto.request.TaskFilterRequest;
 import com.ifm.projectmgmt.dto.request.UpdateTaskRequest;
 import com.ifm.projectmgmt.dto.request.UpdateTaskStatusRequest;
 import com.ifm.projectmgmt.dto.response.PagedResponse;
@@ -13,6 +14,7 @@ import com.ifm.projectmgmt.exception.InvalidInputException;
 import com.ifm.projectmgmt.exception.ResourceNotFoundException;
 import com.ifm.projectmgmt.repository.ProjectRepository;
 import com.ifm.projectmgmt.repository.TaskRepository;
+import com.ifm.projectmgmt.specification.TaskSpecification;
 import com.ifm.projectmgmt.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,41 +90,33 @@ public class TaskService {
      * Get all tasks with optional filters and sorting.
      * Results are cached for 5 minutes when taskName filter is used.
      *
-     * @param status    the status filter (optional)
-     * @param taskName  the task name filter (optional, partial match)
-     * @param startDate the start date filter (optional)
-     * @param endDate   the end date filter (optional)
-     * @param sortBy    the field to sort by (priority or dueDate)
-     * @param order     the sort order (asc or desc)
-     * @param page      the page number
-     * @param size      the page size
+     * @param filterRequest the filter and pagination request
      * @return paged task responses
      */
     @Transactional(readOnly = true)
-    public PagedResponse<TaskResponse> getAllTasks(
-            TaskStatus status,
-            String taskName,
-            LocalDate startDate,
-            LocalDate endDate,
-            String sortBy,
-            String order,
-            int page,
-            int size) {
+    public PagedResponse<TaskResponse> getAllTasks(TaskFilterRequest filterRequest) {
 
         log.debug("Fetching all tasks with filters - status: {}, taskName: {}, startDate: {}, endDate: {}",
-                  status, taskName, startDate, endDate);
+                  filterRequest.getStatus(), filterRequest.getTaskName(),
+                  filterRequest.getStartDate(), filterRequest.getEndDate());
 
         // Validate date range
-        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+        if (filterRequest.getStartDate() != null && filterRequest.getEndDate() != null
+                && filterRequest.getStartDate().isAfter(filterRequest.getEndDate())) {
             throw new InvalidInputException(Constants.ERROR_INVALID_DATE_RANGE);
         }
 
         // Create pageable with sorting
-        Pageable pageable = createPageable(page, size, sortBy, order);
+        Pageable pageable = createPageable(filterRequest.getPage(), filterRequest.getSize(),
+                filterRequest.getSortBy(), filterRequest.getOrder());
 
-        // Fetch tasks with optional filters
-        Page<Task> taskPage = taskRepository.findAllWithOptionalFilters(
-                status, taskName, startDate, endDate, pageable);
+        // Build dynamic specification with filters
+        Specification<Task> spec = TaskSpecification.withFilters(
+                filterRequest.getStatus(), filterRequest.getTaskName(),
+                filterRequest.getStartDate(), filterRequest.getEndDate());
+
+        // Fetch tasks using specification
+        Page<Task> taskPage = taskRepository.findAll(spec, pageable);
 
         // Map to response
         Page<TaskResponse> responsePage = taskPage.map(this::mapToResponse);
@@ -164,13 +159,12 @@ public class TaskService {
 
         Pageable pageable = createPageable(page, size, sortBy, order);
 
-        Page<Task> taskPage;
-        if (startDate != null || endDate != null) {
-            taskPage = taskRepository.findByProjectIdWithOptionalDateRange(
-                    projectId, startDate, endDate, pageable);
-        } else {
-            taskPage = taskRepository.findByProjectId(projectId, pageable);
-        }
+        // Build dynamic specification with project and date filters
+        Specification<Task> spec = Specification.where(TaskSpecification.belongsToProject(projectId))
+                .and(TaskSpecification.hasDueDateAfter(startDate))
+                .and(TaskSpecification.hasDueDateBefore(endDate));
+
+        Page<Task> taskPage = taskRepository.findAll(spec, pageable);
 
         Page<TaskResponse> responsePage = taskPage.map(this::mapToResponse);
 

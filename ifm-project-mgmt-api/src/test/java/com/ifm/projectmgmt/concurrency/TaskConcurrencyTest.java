@@ -181,7 +181,7 @@ class TaskConcurrencyTest {
         // Given
         Task task = createAndSaveTask("Version Test Task", 5);
         Long taskId = task.getId();
-        assertThat(task.getVersion()).isEqualTo(0L);
+        assertThat(task.getVersion()).isZero();
 
         // When - Perform 5 sequential updates
         for (int i = 0; i < 5; i++) {

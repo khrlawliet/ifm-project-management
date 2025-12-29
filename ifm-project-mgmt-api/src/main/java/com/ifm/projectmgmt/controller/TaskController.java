@@ -1,6 +1,7 @@
 package com.ifm.projectmgmt.controller;
 
 import com.ifm.projectmgmt.dto.request.CreateTaskRequest;
+import com.ifm.projectmgmt.dto.request.TaskFilterRequest;
 import com.ifm.projectmgmt.dto.request.UpdateTaskRequest;
 import com.ifm.projectmgmt.dto.request.UpdateTaskStatusRequest;
 import com.ifm.projectmgmt.dto.response.PagedResponse;
@@ -52,7 +53,8 @@ public class TaskController {
     @GetMapping(Constants.TASKS_PATH)
     @Operation(
             summary = "Get all tasks",
-            description = "Retrieve all tasks across all projects with optional status, task name (for auto-suggest), date range filter, sorting, and pagination. Task name search is cached for 5 minutes."
+            description = "Retrieve all tasks across all projects with optional status, task name (for auto-suggest), date range filter, sorting, " +
+                    "and pagination. Task name search is cached for 5 minutes."
     )
     public ResponseEntity<PagedResponse<TaskResponse>> getAllTasks(
             @Parameter(description = "Status filter (PENDING, IN_PROGRESS, COMPLETED)")
@@ -91,9 +93,19 @@ public class TaskController {
 
         log.info("GET request to fetch all tasks with filters - status: {}, taskName: {}", status, taskName);
 
-        PagedResponse<TaskResponse> tasks = taskService.getAllTasks(
-                status, taskName, startDate, endDate, sortBy, order, page, size
-        );
+        // Build filter request DTO to reduce method parameter count
+        TaskFilterRequest filterRequest = TaskFilterRequest.builder()
+                                                           .status(status)
+                                                           .taskName(taskName)
+                                                           .startDate(startDate)
+                                                           .endDate(endDate)
+                                                           .sortBy(sortBy)
+                                                           .order(order)
+                                                           .page(page)
+                                                           .size(size)
+                                                           .build();
+
+        PagedResponse<TaskResponse> tasks = taskService.getAllTasks(filterRequest);
 
         return ResponseEntity.ok(tasks);
     }

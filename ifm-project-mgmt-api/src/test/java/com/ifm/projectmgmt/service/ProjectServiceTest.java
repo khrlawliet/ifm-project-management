@@ -65,10 +65,9 @@ class ProjectServiceTest {
         List<ProjectResponse> responses = projectService.getAllProjects();
 
         // Then
-        assertThat(responses).isNotNull();
         assertThat(responses).hasSize(1);
-        assertThat(responses.get(0).getName()).isEqualTo("Test Project");
-        assertThat(responses.get(0).getTaskCount()).isEqualTo(5L);
+        assertThat(responses.getFirst().getName()).isEqualTo("Test Project");
+        assertThat(responses.getFirst().getTaskCount()).isEqualTo(5L);
 
         verify(projectRepository).findAll();
         verify(taskRepository).countByProjectId(1L);
@@ -127,7 +126,7 @@ class ProjectServiceTest {
         // Then
         assertThat(response).isNotNull();
         assertThat(response.getName()).isEqualTo("Test Project");
-        assertThat(response.getTaskCount()).isEqualTo(0L);
+        assertThat(response.getTaskCount()).isZero();
 
         verify(projectRepository).save(any(Project.class));
         verify(taskRepository).countByProjectId(1L);

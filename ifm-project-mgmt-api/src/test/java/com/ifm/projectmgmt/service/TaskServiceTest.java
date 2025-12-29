@@ -24,6 +24,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,7 +33,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
@@ -87,11 +87,11 @@ class TaskServiceTest {
     void shouldCreateTaskSuccessfully() {
         // Given
         CreateTaskRequest request = CreateTaskRequest.builder()
-                .name("New Task")
-                .priority(2)
-                .dueDate(LocalDate.now().plusDays(5))
-                .assignee("test@example.com")
-                .build();
+                                                     .name("New Task")
+                                                     .priority(2)
+                                                     .dueDate(LocalDate.now().plusDays(5))
+                                                     .assignee("test@example.com")
+                                                     .build();
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(testProject));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
@@ -115,11 +115,11 @@ class TaskServiceTest {
     void shouldThrowExceptionWhenProjectNotFound() {
         // Given
         CreateTaskRequest request = CreateTaskRequest.builder()
-                .name("New Task")
-                .priority(2)
-                .dueDate(LocalDate.now().plusDays(5))
-                .assignee("test@example.com")
-                .build();
+                                                     .name("New Task")
+                                                     .priority(2)
+                                                     .dueDate(LocalDate.now().plusDays(5))
+                                                     .assignee("test@example.com")
+                                                     .build();
 
         when(projectRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -170,7 +170,7 @@ class TaskServiceTest {
         // Given
         Page<Task> taskPage = new PageImpl<>(List.of(testTask));
         when(projectRepository.existsById(1L)).thenReturn(true);
-        when(taskRepository.findByProjectIdWithOptionalDateRange(anyLong(), any(), any(), any(Pageable.class)))
+        when(taskRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(taskPage);
 
         // When
@@ -190,7 +190,7 @@ class TaskServiceTest {
         assertThat(response.getTotalElements()).isEqualTo(1);
 
         verify(projectRepository).existsById(1L);
-        verify(taskRepository).findByProjectIdWithOptionalDateRange(anyLong(), any(), any(), any(Pageable.class));
+        verify(taskRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -210,7 +210,7 @@ class TaskServiceTest {
                 .hasMessageContaining("Start date must be before end date");
 
         verify(projectRepository).existsById(1L);
-        verify(taskRepository, never()).findByProjectIdWithOptionalDateRange(anyLong(), any(), any(), any());
+        verify(taskRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -218,9 +218,9 @@ class TaskServiceTest {
     void shouldUpdateTaskSuccessfully() {
         // Given
         UpdateTaskRequest request = UpdateTaskRequest.builder()
-                .name("Updated Task")
-                .priority(5)
-                .build();
+                                                     .name("Updated Task")
+                                                     .priority(5)
+                                                     .build();
 
         when(taskRepository.findById(1L)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
@@ -240,8 +240,8 @@ class TaskServiceTest {
     void shouldUpdateTaskStatusSuccessfully() {
         // Given
         UpdateTaskStatusRequest request = UpdateTaskStatusRequest.builder()
-                .status(TaskStatus.IN_PROGRESS)
-                .build();
+                                                                 .status(TaskStatus.IN_PROGRESS)
+                                                                 .build();
 
         when(taskRepository.findById(1L)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class))).thenReturn(testTask);
@@ -261,8 +261,8 @@ class TaskServiceTest {
     void shouldHandleOptimisticLockingFailure() {
         // Given
         UpdateTaskStatusRequest request = UpdateTaskStatusRequest.builder()
-                .status(TaskStatus.IN_PROGRESS)
-                .build();
+                                                                 .status(TaskStatus.IN_PROGRESS)
+                                                                 .build();
 
         when(taskRepository.findById(1L)).thenReturn(Optional.of(testTask));
         when(taskRepository.save(any(Task.class)))
@@ -303,6 +303,6 @@ class TaskServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(taskRepository).findById(999L);
-        verify(taskRepository, never()).delete(any());
+        verify(taskRepository, never()).delete(any(Task.class));
     }
 }

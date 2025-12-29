@@ -257,4 +257,36 @@ class TaskControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("Should return 400 for invalid enum value in request parameter")
+    void shouldReturn400ForInvalidEnumInRequestParameter() throws Exception {
+        // When/Then - Invalid status value "DONE" instead of valid enum values
+        mockMvc.perform(get("/api/tasks")
+                        .param("status", "DONE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(containsString("Invalid value 'DONE' for parameter 'status'")))
+                .andExpect(jsonPath("$.message").value(containsString("PENDING, IN_PROGRESS, COMPLETED")));
+    }
+
+    @Test
+    @DisplayName("Should return 400 for invalid enum value in request body")
+    void shouldReturn400ForInvalidEnumInRequestBody() throws Exception {
+        // Given - Invalid status in JSON body
+        String invalidJson = """
+                {
+                    "status": "DONE"
+                }
+                """;
+
+        // When/Then
+        mockMvc.perform(patch("/api/tasks/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value(containsString("Invalid value 'DONE' for field 'status'")))
+                .andExpect(jsonPath("$.message").value(containsString("PENDING, IN_PROGRESS, COMPLETED")));
+    }
 }

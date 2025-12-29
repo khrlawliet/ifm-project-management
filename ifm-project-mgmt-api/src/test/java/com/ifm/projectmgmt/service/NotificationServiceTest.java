@@ -30,12 +30,11 @@ class NotificationServiceTest {
     @InjectMocks
     private NotificationService notificationService;
 
-    private Project testProject;
     private Task testTask;
 
     @BeforeEach
     void setUp() {
-        testProject = new Project();
+        Project testProject = new Project();
         testProject.setId(1L);
         testProject.setName("Test Project");
         testProject.setDescription("Test Description");
